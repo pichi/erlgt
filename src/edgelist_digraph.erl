@@ -40,7 +40,14 @@
 
 -export([new/0, from_list/1]).
 
--export([vertices/1, in_neighbours/2, out_neighbours/2]).
+-export([ from_edgelist/1
+        , to_edgelist/1
+        , vertices/1
+        , in_neighbours/2
+        , out_neighbours/2
+        , sources/1
+        , sinks/1
+        ]).
 
 %% -----------------------------------------------------------------------------
 %% API
@@ -48,19 +55,26 @@
 
 new() -> {?MODULE, []}.
 
-from_list(L) ->
-    [ ok || E <- L, case E of {_, _} -> true; _ -> error(badarg) end ],
-    {?MODULE, lists:usort(L)}.
+from_list(L) -> from_edgelist(L).
 
 %% -----------------------------------------------------------------------------
 %% Callbacks
 %% -----------------------------------------------------------------------------
 
-vertices({_, G}) ->
-    lists:usort([ V || {V1, V2} <- G, V <- [V1, V2] ]).
+from_edgelist(L) ->
+    [ ok || E <- L, case E of {_, _} -> true; _ -> error(badarg) end ],
+    {?MODULE, lists:usort(L)}.
+
+to_edgelist({_, L}) -> L.
+
+vertices(G) -> gen_digraph:gen_vertices(G).
 
 in_neighbours({_, G}, V) ->
     [ V1 || {V1, V2} <- G, V2 =:= V ].
 
 out_neighbours({_, G}, V) ->
     [ V2 || {V1, V2} <- G, V1 =:= V ].
+
+sources(G) -> gen_digraph:gen_sources(G).
+
+sinks(G) -> gen_digraph:gen_sinks(G).
