@@ -47,7 +47,12 @@
         , out_neighbours/2
         , sources/1
         , sinks/1
+        , delete/1
         ]).
+
+-ifdef(TEST).
+-include_lib("proper_eunit/include/pt_proper_eunit.hrl").
+-endif.
 
 %% -----------------------------------------------------------------------------
 %% API
@@ -78,3 +83,21 @@ out_neighbours({_, G}, V) ->
 sources(G) -> gen_digraph:gen_sources(G).
 
 sinks(G) -> gen_digraph:gen_sinks(G).
+
+delete(_) -> true.
+
+%% -----------------------------------------------------------------------------
+%% Tests
+%% -----------------------------------------------------------------------------
+
+-ifdef(TEST).
+
+%-proper_opts([1000, {to_file, user}]).
+
+prop_edgelist() -> gen_digraph:prop_edgelist(?MODULE).
+
+prop_sources() -> gen_digraph:prop_sources(?MODULE).
+
+prop_sinks() -> gen_digraph:prop_sinks(?MODULE).
+
+-endif. %% TEST

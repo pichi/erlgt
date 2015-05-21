@@ -48,12 +48,26 @@
         , out_neighbours/2
         , sources/1
         , sinks/1
+        , delete/1
         ]).
 
 -export([ gen_vertices/1
         , gen_sources/1
         , gen_sinks/1
         ]).
+
+-ifdef(TEST).
+
+-include_lib("proper/include/proper.hrl").
+
+-export([ digraph/0
+        , acyclic_digraph/0
+        , prop_edgelist/1
+        , prop_sinks/1
+        , prop_sources/1
+        ]).
+
+-endif.
 
 %% -----------------------------------------------------------------------------
 %% Behaviour
@@ -77,6 +91,8 @@
 
 -callback sinks(Graph :: gen_digraph()) -> [vertice()].
 
+-callback delete(Graph :: gen_digraph()) -> true.
+
 %% -----------------------------------------------------------------------------
 %% Callback wrappers
 %% -----------------------------------------------------------------------------
@@ -95,6 +111,8 @@ sources(?G) -> M:sources(G).
 
 sinks(?G) -> M:sinks(G).
 
+delete(?G) -> M:delete(G).
+
 %% -----------------------------------------------------------------------------
 %% Generic implementations
 %% -----------------------------------------------------------------------------
@@ -109,3 +127,72 @@ gen_sources(G) ->
 
 gen_sinks(G) ->
     lists:usort([ V2 || {_, V2} <- to_edgelist(G) ]).
+
+%% -----------------------------------------------------------------------------
+%% Generic properties and generators
+%% -----------------------------------------------------------------------------
+
+-ifdef(TEST).
+
+edge() -> ?SIZED(S, begin
+                        V = round(math:sqrt(S)),
+                        {integer(0, V), integer(1, V)}
+                    end).
+
+acyclic_edge() -> ?LET({A, B}, edge(), {A, A+B}).
+
+digraph(Edge) -> list(Edge).
+
+digraph() -> digraph(edge()).
+
+acyclic_digraph() -> digraph(acyclic_edge()).
+
+-define(WITH_G(L, Do),
+        begin
+            G = Module:from_edgelist(L),
+            try Do after delete(G)
+            end
+        end
+       ).
+
+prop_edgelist(Module) ->
+    ?FORALL(
+       L, digraph(),
+       ?WITH_G(
+          L, equals(lists:usort(L),lists:usort(to_edgelist(G)))
+         )
+      ).
+
+prop_sources(Module) ->
+    ?FORALL(
+       L, digraph(),
+       ?WITH_G(
+          L,
+          case L of
+              [] -> equals([], sources(G));
+              _  ->
+                  ?FORALL(
+                     {V, _}, oneof(L),
+                     lists:member(V, sources(G))
+                    )
+          end
+         )
+      ).
+
+prop_sinks(Module) ->
+    ?FORALL(
+       L, digraph(),
+       ?WITH_G(
+          L,
+          case L of
+              [] -> equals([], sinks(G));
+              _  ->
+                  ?FORALL(
+                     {_, V}, oneof(L),
+                     lists:member(V, sinks(G))
+                    )
+          end
+         )
+      ).
+
+-endif. %% TEST
