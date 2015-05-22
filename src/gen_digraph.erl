@@ -65,8 +65,7 @@
         , acyclic_digraph/0
         , prop_edgelist/1
         , prop_vertices/1
-        , prop_sinks/1
-        , prop_sources/1
+        , prop_neighbours/1
         , gen_properties_tests/1
         , gen_properties_tests/2
         ]).
@@ -186,34 +185,28 @@ prop_vertices(Module) ->
              begin
                  Vs = vertices(G),
                  conjunction(
-                   [{source, lists:member(V1, Vs)},
-                    {sink,   lists:member(V2, Vs)}]
+                   [{source,     lists:member(V1, Vs)},
+                    {sink,       lists:member(V2, Vs)},
+                    {in_sources, lists:member(V1, sources(G))},
+                    {in_sinks,   lists:member(V2, sinks(G))}
+                   ]
                   )
              end
             )
          )
       ).
 
-prop_sources(Module) ->
+prop_neighbours(Module) ->
     ?FORALL(
-       L, digraph(),
+       L, non_empty(digraph()),
        ?WITH_G(
-          L, equals([], sources(G)),
+          L,
           ?FORALL(
-             {V, _}, oneof(L),
-             lists:member(V, sources(G))
-            )
-         )
-      ).
-
-prop_sinks(Module) ->
-    ?FORALL(
-       L, digraph(),
-       ?WITH_G(
-          L, equals([], sinks(G)),
-          ?FORALL(
-             {_, V}, oneof(L),
-             lists:member(V, sinks(G))
+             {V1, V2}, oneof(L),
+             conjunction(
+               [{in,  lists:member(V1,  in_neighbours(G, V2))},
+                {out, lists:member(V2, out_neighbours(G, V1))}]
+              )
             )
          )
       ).
@@ -223,7 +216,10 @@ gen_properties_tests(Module) ->
 
 gen_properties_tests(Module, Opts) ->
     [{atom_to_list(X), ?_assert(proper:quickcheck(Prop, Opts))}
-     || X <- [prop_edgelist, prop_vertices, prop_sources, prop_sinks],
+     || X <- [  prop_edgelist
+              , prop_vertices
+              , prop_neighbours
+             ],
         Prop <- [?MODULE:X(Module)]
     ].
 
