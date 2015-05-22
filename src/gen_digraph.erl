@@ -155,6 +155,15 @@ acyclic_digraph() -> digraph(acyclic_edge()).
         end
        ).
 
+-define(WITH_G(L, DoEmpty, DoOther),
+        ?WITH_G(L,
+                case L of
+                    [] -> DoEmpty;
+                    _ -> DoOther
+                end
+               )
+       ).
+
 prop_edgelist(Module) ->
     ?FORALL(
        L, digraph(),
@@ -167,15 +176,11 @@ prop_sources(Module) ->
     ?FORALL(
        L, digraph(),
        ?WITH_G(
-          L,
-          case L of
-              [] -> equals([], sources(G));
-              _  ->
-                  ?FORALL(
-                     {V, _}, oneof(L),
-                     lists:member(V, sources(G))
-                    )
-          end
+          L, equals([], sources(G)),
+          ?FORALL(
+             {V, _}, oneof(L),
+             lists:member(V, sources(G))
+            )
          )
       ).
 
@@ -183,15 +188,11 @@ prop_sinks(Module) ->
     ?FORALL(
        L, digraph(),
        ?WITH_G(
-          L,
-          case L of
-              [] -> equals([], sinks(G));
-              _  ->
-                  ?FORALL(
-                     {_, V}, oneof(L),
-                     lists:member(V, sinks(G))
-                    )
-          end
+          L, equals([], sinks(G)),
+          ?FORALL(
+             {_, V}, oneof(L),
+             lists:member(V, sinks(G))
+            )
          )
       ).
 
