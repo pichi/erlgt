@@ -51,7 +51,7 @@
         ]).
 
 -ifdef(TEST).
--include_lib("proper_eunit/include/pt_proper_eunit.hrl").
+-include_lib("eunit/include/eunit.hrl").
 -endif.
 
 %% -----------------------------------------------------------------------------
@@ -92,14 +92,7 @@ delete(_) -> true.
 
 -ifdef(TEST).
 
-%-proper_opts([1000, {to_file, user}]).
-
-prop_edgelist() -> gen_digraph:prop_edgelist(?MODULE).
-
-prop_vertices() -> gen_digraph:prop_vertices(?MODULE).
-
-prop_sources() -> gen_digraph:prop_sources(?MODULE).
-
-prop_sinks() -> gen_digraph:prop_sinks(?MODULE).
+gen_properties_test_() ->
+    gen_digraph:gen_properties_tests(?MODULE).
 
 -endif. %% TEST

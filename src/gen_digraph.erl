@@ -59,6 +59,7 @@
 -ifdef(TEST).
 
 -include_lib("proper/include/proper.hrl").
+-include_lib("eunit/include/eunit.hrl").
 
 -export([ digraph/0
         , acyclic_digraph/0
@@ -66,6 +67,8 @@
         , prop_vertices/1
         , prop_sinks/1
         , prop_sources/1
+        , gen_properties_tests/1
+        , gen_properties_tests/2
         ]).
 
 -endif.
@@ -180,12 +183,12 @@ prop_vertices(Module) ->
           L, equals([], vertices(G)),
           ?FORALL(
              {V1, V2}, oneof(L),
-             case vertices(G) of
-                 Vs ->
-                     conjunction(
-                       [{source, lists:member(V1, Vs)},
-                        {sink, lists:member(V2, Vs)}]
-                      )
+             begin
+                 Vs = vertices(G),
+                 conjunction(
+                   [{source, lists:member(V1, Vs)},
+                    {sink,   lists:member(V2, Vs)}]
+                  )
              end
             )
          )
@@ -214,5 +217,15 @@ prop_sinks(Module) ->
             )
          )
       ).
+
+gen_properties_tests(Module) ->
+    gen_properties_tests(Module, []).
+
+gen_properties_tests(Module, Opts) ->
+    [{atom_to_list(X), ?_assert(proper:quickcheck(Prop, Opts))}
+     || X <- [prop_edgelist, prop_vertices, prop_sources, prop_sinks],
+        Prop <- [?MODULE:X(Module)]
+    ].
+
 
 -endif. %% TEST
