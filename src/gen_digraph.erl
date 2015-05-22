@@ -63,6 +63,7 @@
 -export([ digraph/0
         , acyclic_digraph/0
         , prop_edgelist/1
+        , prop_vertices/1
         , prop_sinks/1
         , prop_sources/1
         ]).
@@ -169,6 +170,24 @@ prop_edgelist(Module) ->
        L, digraph(),
        ?WITH_G(
           L, equals(lists:usort(L),lists:usort(to_edgelist(G)))
+         )
+      ).
+
+prop_vertices(Module) ->
+    ?FORALL(
+       L, digraph(),
+       ?WITH_G(
+          L, equals([], vertices(G)),
+          ?FORALL(
+             {V1, V2}, oneof(L),
+             case vertices(G) of
+                 Vs ->
+                     conjunction(
+                       [{source, lists:member(V1, Vs)},
+                        {sink, lists:member(V2, Vs)}]
+                      )
+             end
+            )
          )
       ).
 

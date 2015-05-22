@@ -96,6 +96,8 @@ delete(_) -> true.
 
 prop_edgelist() -> gen_digraph:prop_edgelist(?MODULE).
 
+prop_vertices() -> gen_digraph:prop_vertices(?MODULE).
+
 prop_sources() -> gen_digraph:prop_sources(?MODULE).
 
 prop_sinks() -> gen_digraph:prop_sinks(?MODULE).
