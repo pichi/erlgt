@@ -150,20 +150,15 @@ digraph() -> digraph(edge()).
 
 acyclic_digraph() -> digraph(acyclic_edge()).
 
+%% Warning! This macro can be used only as the innermost macro of a property
+%% because it deletes graph `G'. In other words, If action `Do' returns
+%% `test()', it has to perform all actions using `G' in direct code execution
+%% of `Do'.
 -define(WITH_G(L, Do),
         begin
             G = Module:from_edgelist(L),
-            Do
+            try Do after delete(G) end
         end
-       ).
-
--define(WITH_G(L, DoEmpty, DoOther),
-        ?WITH_G(L,
-                case L of
-                    [] -> DoEmpty;
-                    _ -> DoOther
-                end
-               )
        ).
 
 prop_edgelist(Module) ->
@@ -173,11 +168,12 @@ prop_edgelist(Module) ->
           L,
           begin
               El = lists:sort(to_edgelist(G)),
-              delete(G),
+              Sl = lists:sort(L),
+              Ul = lists:usort(Sl),
               ?WHENFAIL(
-                 io:format("~p or ~p =/= ~p~n",
-                           [lists:sort(L), lists:usort(L), El]),
-                 lists:sort(L) =:= El orelse lists:usort(L) =:= El
+                 io:format("~p and ~p =/= ~p~n",
+                           [Sl, Ul, El]),
+                 Sl =:= El orelse Ul =:= El
                 )
           end
          )
@@ -186,43 +182,39 @@ prop_edgelist(Module) ->
 prop_vertices(Module) ->
     ?FORALL(
        L, digraph(),
-       ?WITH_G(
-          L,
-          begin
-              Vs = vertices(G),
-              delete(G),
-              equals([], Vs)
-          end,
-          ?FORALL(
-             {V1, V2}, oneof(L),
-             begin
-                 Vs  = vertices(G),
-                 Ses = sources(G),
-                 Sks = sinks(G),
-                 delete(G),
-                 conjunction(
-                   [{source,     lists:member(V1, Vs)},
-                    {sink,       lists:member(V2, Vs)},
-                    {in_sources, lists:member(V1, Ses)},
-                    {in_sinks,   lists:member(V2, Sks)}
-                   ]
-                  )
-             end
-            )
-         )
+       case L of
+           [] -> ?WITH_G(L, equals([], vertices(G)));
+           _  ->
+               ?FORALL(
+                  {V1, V2}, oneof(L),
+                  ?WITH_G(L,
+                          begin
+                              Vs  = vertices(G),
+                              Ses = sources(G),
+                              Sks = sinks(G),
+                              conjunction(
+                                [{source,     lists:member(V1, Vs)},
+                                 {sink,       lists:member(V2, Vs)},
+                                 {in_sources, lists:member(V1, Ses)},
+                                 {in_sinks,   lists:member(V2, Sks)}
+                                ]
+                               )
+                          end
+                         )
+                 )
+       end
       ).
 
 prop_neighbours(Module) ->
     ?FORALL(
        L, non_empty(digraph()),
-       ?WITH_G(
-          L,
-          ?FORALL(
-             {V1, V2}, oneof(L),
+       ?FORALL(
+          {V1, V2}, oneof(L),
+          ?WITH_G(
+             L,
              begin
                  In  =  in_neighbours(G, V2),
                  Out = out_neighbours(G, V1),
-                 delete(G),
                  conjunction(
                    [{in,  lists:member(V1, In)},
                     {out, lists:member(V2, Out)}]
