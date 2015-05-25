@@ -153,8 +153,7 @@ acyclic_digraph() -> digraph(acyclic_edge()).
 -define(WITH_G(L, Do),
         begin
             G = Module:from_edgelist(L),
-            try Do after delete(G)
-            end
+            Do
         end
        ).
 
@@ -171,7 +170,16 @@ prop_edgelist(Module) ->
     ?FORALL(
        L, digraph(),
        ?WITH_G(
-          L, equals(lists:usort(L),lists:usort(to_edgelist(G)))
+          L,
+          begin
+              El = lists:sort(to_edgelist(G)),
+              delete(G),
+              ?WHENFAIL(
+                 io:format("~p or ~p =/= ~p~n",
+                           [lists:sort(L), lists:usort(L), El]),
+                 lists:sort(L) =:= El orelse lists:usort(L) =:= El
+                )
+          end
          )
       ).
 
@@ -179,16 +187,24 @@ prop_vertices(Module) ->
     ?FORALL(
        L, digraph(),
        ?WITH_G(
-          L, equals([], vertices(G)),
+          L,
+          begin
+              Vs = vertices(G),
+              delete(G),
+              equals([], Vs)
+          end,
           ?FORALL(
              {V1, V2}, oneof(L),
              begin
-                 Vs = vertices(G),
+                 Vs  = vertices(G),
+                 Ses = sources(G),
+                 Sks = sinks(G),
+                 delete(G),
                  conjunction(
                    [{source,     lists:member(V1, Vs)},
                     {sink,       lists:member(V2, Vs)},
-                    {in_sources, lists:member(V1, sources(G))},
-                    {in_sinks,   lists:member(V2, sinks(G))}
+                    {in_sources, lists:member(V1, Ses)},
+                    {in_sinks,   lists:member(V2, Sks)}
                    ]
                   )
              end
@@ -203,10 +219,15 @@ prop_neighbours(Module) ->
           L,
           ?FORALL(
              {V1, V2}, oneof(L),
-             conjunction(
-               [{in,  lists:member(V1,  in_neighbours(G, V2))},
-                {out, lists:member(V2, out_neighbours(G, V1))}]
-              )
+             begin
+                 In  =  in_neighbours(G, V2),
+                 Out = out_neighbours(G, V1),
+                 delete(G),
+                 conjunction(
+                   [{in,  lists:member(V1, In)},
+                    {out, lists:member(V2, Out)}]
+                  )
+             end
             )
          )
       ).
