@@ -43,7 +43,9 @@
 -export_type([gen_digraph/0, vertice/0]).
 
 -export([ to_edgelist/1
+        , no_edges/1
         , vertices/1
+        , no_vertices/1
         , in_neighbours/2
         , out_neighbours/2
         , sources/1
@@ -51,7 +53,9 @@
         , delete/1
         ]).
 
--export([ gen_vertices/1
+-export([ gen_no_edges/1
+        , gen_vertices/1
+        , gen_no_vertices/1
         , gen_in_neighbours/2
         , gen_out_neighbours/2
         , gen_sources/1
@@ -66,7 +70,9 @@
 -export([ digraph/0
         , acyclic_digraph/0
         , prop_edgelist/1
+        , prop_no_edges/1
         , prop_vertices/1
+        , prop_no_vertices/1
         , test_empty_vertices/1
         , prop_neighbours/1
         , gen_properties_tests/1
@@ -88,7 +94,11 @@
 
 -callback to_edgelist(Graph :: gen_digraph()) -> [{vertice(), vertice()}].
 
+-callback no_edges(Graph :: gen_digraph()) -> non_neg_integer().
+
 -callback vertices(Graph :: gen_digraph()) -> [vertice()].
+
+-callback no_vertices(Graph :: gen_digraph()) -> non_neg_integer().
 
 -callback in_neighbours(Graph :: gen_digraph(), V :: vertice()) -> [vertice()].
 
@@ -108,7 +118,11 @@
 
 to_edgelist(?G) -> M:to_edgelist(G).
 
+no_edges(?G) -> M:no_edges(G).
+
 vertices(?G) -> M:vertices(G).
+
+no_vertices(?G) -> M:no_vertices(G).
 
 in_neighbours(?G, V) -> M:in_neighbours(G, V).
 
@@ -124,10 +138,16 @@ delete(?G) -> M:delete(G).
 %% Generic implementations
 %% -----------------------------------------------------------------------------
 
+gen_no_edges(G) ->
+    length(to_edgelist(G)).
+
 gen_vertices(G) ->
     % Note sources and sinks can has implementation different form gen_* so
     % it can return vertices in any particular order.
     lists:umerge([ lists:usort(Vs) || Vs <- [sources(G), sinks(G)] ]).
+
+gen_no_vertices(G) ->
+    length(vertices(G)).
 
 gen_in_neighbours(G, V) ->
     lists:usort([ V1 || {V1, V2} <- to_edgelist(G), V2 =:= V ]).
@@ -189,6 +209,12 @@ prop_edgelist(Module) ->
          )
       ).
 
+prop_no_edges(Module) ->
+    ?FORALL(
+       L, digraph(),
+       ?WITH_G(L, equals(length(to_edgelist(G)), no_edges(G)))
+      ).
+
 prop_vertices(Module) ->
     ?FORALL(
        L, non_empty(digraph()),
@@ -204,6 +230,12 @@ prop_vertices(Module) ->
                    )
                  )
          )
+      ).
+
+prop_no_vertices(Module) ->
+    ?FORALL(
+       L, digraph(),
+       ?WITH_G(L, equals(length(vertices(G)), no_vertices(G)))
       ).
 
 test_empty_vertices(Module) ->
@@ -239,7 +271,9 @@ gen_properties_tests(Module) ->
 gen_properties_tests(Module, Opts) ->
     [{atom_to_list(X), ?_assert(proper:quickcheck(Prop, Opts))}
      || X <- [  prop_edgelist
+              , prop_no_edges
               , prop_vertices
+              , prop_no_vertices
               , prop_neighbours
              ],
         Prop <- [?MODULE:X(Module)]

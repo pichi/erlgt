@@ -42,7 +42,9 @@
 
 -export([ from_edgelist/1
         , to_edgelist/1
+        , no_edges/1
         , vertices/1
+        , no_vertices/1
         , in_neighbours/2
         , out_neighbours/2
         , sources/1
@@ -72,7 +74,11 @@ from_edgelist(L) ->
 
 to_edgelist({_, L}) -> L.
 
+no_edges(G) -> gen_digraph:gen_no_edges(G).
+
 vertices(G) -> gen_digraph:gen_vertices(G).
+
+no_vertices(G) -> gen_digraph:gen_no_vertices(G).
 
 in_neighbours(G, V) -> gen_digraph:gen_in_neighbours(G, V).
 

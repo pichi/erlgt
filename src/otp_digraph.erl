@@ -42,7 +42,9 @@
 
 -export([ from_edgelist/1
         , to_edgelist/1
+        , no_edges/1
         , vertices/1
+        , no_vertices/1
         , in_neighbours/2
         , out_neighbours/2
         , sources/1
@@ -82,7 +84,11 @@ to_edgelist({_, D}) ->
       end
       || E <- digraph:edges(D) ].
 
+no_edges({_, D}) -> digraph:no_edges(D).
+
 vertices({_, D}) -> digraph:vertices(D).
+
+no_vertices({_, D}) -> digraph:no_vertices(D).
 
 in_neighbours({_, D}, V) -> digraph:in_neighbours(D, V).
 
