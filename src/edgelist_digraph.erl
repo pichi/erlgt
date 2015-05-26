@@ -74,11 +74,9 @@ to_edgelist({_, L}) -> L.
 
 vertices(G) -> gen_digraph:gen_vertices(G).
 
-in_neighbours({_, G}, V) ->
-    [ V1 || {V1, V2} <- G, V2 =:= V ].
+in_neighbours(G, V) -> gen_digraph:gen_in_neighbours(G, V).
 
-out_neighbours({_, G}, V) ->
-    [ V2 || {V1, V2} <- G, V1 =:= V ].
+out_neighbours(G, V) -> gen_digraph:gen_out_neighbours(G, V).
 
 sources(G) -> gen_digraph:gen_sources(G).
 

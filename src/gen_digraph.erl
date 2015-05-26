@@ -52,6 +52,8 @@
         ]).
 
 -export([ gen_vertices/1
+        , gen_in_neighbours/2
+        , gen_out_neighbours/2
         , gen_sources/1
         , gen_sinks/1
         ]).
@@ -126,6 +128,12 @@ gen_vertices(G) ->
     % Note sources and sinks can has implementation different form gen_* so
     % it can return vertices in any particular order.
     lists:umerge([ lists:usort(Vs) || Vs <- [sources(G), sinks(G)] ]).
+
+gen_in_neighbours(G, V) ->
+    lists:usort([ V1 || {V1, V2} <- to_edgelist(G), V2 =:= V ]).
+
+gen_out_neighbours(G, V) ->
+    lists:usort([ V2 || {V1, V2} <- to_edgelist(G), V1 =:= V ]).
 
 gen_sources(G) ->
     lists:usort([ V1 || {V1, _} <- to_edgelist(G) ]).
