@@ -103,4 +103,7 @@ delete({_, D}) -> digraph:delete(D).
 gen_properties_test_() ->
     gen_digraph:gen_properties_tests(?MODULE).
 
+gen_tests_test_() ->
+    gen_digraph:gen_tests(?MODULE).
+
 -endif. %% TEST

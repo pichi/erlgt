@@ -65,9 +65,11 @@
         , acyclic_digraph/0
         , prop_edgelist/1
         , prop_vertices/1
+        , test_empty_vertices/1
         , prop_neighbours/1
         , gen_properties_tests/1
         , gen_properties_tests/2
+        , gen_tests/1
         ]).
 
 -endif.
@@ -181,28 +183,31 @@ prop_edgelist(Module) ->
 
 prop_vertices(Module) ->
     ?FORALL(
-       L, digraph(),
-       case L of
-           [] -> ?WITH_G(L, equals([], vertices(G)));
-           _  ->
-               ?FORALL(
-                  {V1, V2}, oneof(L),
-                  ?WITH_G(L,
-                          begin
-                              Vs  = vertices(G),
-                              Ses = sources(G),
-                              Sks = sinks(G),
-                              conjunction(
-                                [{source,     lists:member(V1, Vs)},
-                                 {sink,       lists:member(V2, Vs)},
-                                 {in_sources, lists:member(V1, Ses)},
-                                 {in_sinks,   lists:member(V2, Sks)}
-                                ]
-                               )
-                          end
-                         )
+       L, non_empty(digraph()),
+       ?FORALL(
+          {V1, V2}, oneof(L),
+          ?WITH_G(L,
+                  conjunction(
+                    [{source,     lists:member(V1, vertices(G))},
+                     {sink,       lists:member(V2, vertices(G))},
+                     {in_sources, lists:member(V1, sources(G))},
+                     {in_sinks,   lists:member(V2, sinks(G))}
+                    ]
+                   )
                  )
-       end
+         )
+      ).
+
+test_empty_vertices(Module) ->
+    ?_test(
+       ?WITH_G(
+          [],
+          begin
+              ?assertEqual([], vertices(G)),
+              ?assertEqual([], sources(G)),
+              ?assertEqual([], sinks(G))
+          end
+         )
       ).
 
 prop_neighbours(Module) ->
@@ -212,14 +217,10 @@ prop_neighbours(Module) ->
           {V1, V2}, oneof(L),
           ?WITH_G(
              L,
-             begin
-                 In  =  in_neighbours(G, V2),
-                 Out = out_neighbours(G, V1),
-                 conjunction(
-                   [{in,  lists:member(V1, In)},
-                    {out, lists:member(V2, Out)}]
-                  )
-             end
+             conjunction(
+               [{in,  lists:member(V1,  in_neighbours(G, V2))},
+                {out, lists:member(V2, out_neighbours(G, V1))}]
+              )
             )
          )
       ).
@@ -234,6 +235,12 @@ gen_properties_tests(Module, Opts) ->
               , prop_neighbours
              ],
         Prop <- [?MODULE:X(Module)]
+    ].
+
+gen_tests(Module) ->
+    [{atom_to_list(X), Test}
+     || X <- [test_empty_vertices],
+        Test <- [?MODULE:X(Module)]
     ].
 
 
