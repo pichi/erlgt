@@ -47,6 +47,8 @@
         , no_vertices/1
         , in_neighbours/2
         , out_neighbours/2
+        , in_degree/2
+        , out_degree/2
         , sources/1
         , sinks/1
         , delete/1
@@ -83,6 +85,10 @@ no_vertices(G) -> gen_digraph:gen_no_vertices(G).
 in_neighbours(G, V) -> gen_digraph:gen_in_neighbours(G, V).
 
 out_neighbours(G, V) -> gen_digraph:gen_out_neighbours(G, V).
+
+in_degree(G, V) -> gen_digraph:gen_in_degree(G, V).
+
+out_degree(G, V) -> gen_digraph:gen_out_degree(G, V).
 
 sources(G) -> gen_digraph:gen_sources(G).
 

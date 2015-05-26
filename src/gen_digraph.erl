@@ -48,6 +48,8 @@
         , no_vertices/1
         , in_neighbours/2
         , out_neighbours/2
+        , in_degree/2
+        , out_degree/2
         , sources/1
         , sinks/1
         , delete/1
@@ -58,6 +60,8 @@
         , gen_no_vertices/1
         , gen_in_neighbours/2
         , gen_out_neighbours/2
+        , gen_in_degree/2
+        , gen_out_degree/2
         , gen_sources/1
         , gen_sinks/1
         ]).
@@ -104,6 +108,10 @@
 
 -callback out_neighbours(Graph :: gen_digraph(), V :: vertice()) -> [vertice()].
 
+-callback in_degree(Graph :: gen_digraph(), V :: vertice()) -> non_neg_integer().
+
+-callback out_degree(Graph :: gen_digraph(), V :: vertice()) -> non_neg_integer().
+
 -callback sources(Graph :: gen_digraph()) -> [vertice()].
 
 -callback sinks(Graph :: gen_digraph()) -> [vertice()].
@@ -127,6 +135,10 @@ no_vertices(?G) -> M:no_vertices(G).
 in_neighbours(?G, V) -> M:in_neighbours(G, V).
 
 out_neighbours(?G, V) -> M:out_neighbours(G, V).
+
+in_degree(?G, V) -> M:in_degree(G, V).
+
+out_degree(?G, V) -> M:out_degree(G, V).
 
 sources(?G) -> M:sources(G).
 
@@ -154,6 +166,12 @@ gen_in_neighbours(G, V) ->
 
 gen_out_neighbours(G, V) ->
     lists:usort([ V2 || {V1, V2} <- to_edgelist(G), V1 =:= V ]).
+
+gen_in_degree(G, V) ->
+    length(in_neighbours(G, V)).
+
+gen_out_degree(G, V) ->
+    length(out_neighbours(G, V)).
 
 gen_sources(G) ->
     lists:usort([ V1 || {V1, _} <- to_edgelist(G) ]).
@@ -259,7 +277,12 @@ prop_neighbours(Module) ->
              L,
              conjunction(
                [{in,  lists:member(V1,  in_neighbours(G, V2))},
-                {out, lists:member(V2, out_neighbours(G, V1))}]
+                {out, lists:member(V2, out_neighbours(G, V1))},
+                {in_degree,
+                 equals(length(in_neighbours(G, V2)), in_degree(G, V2))},
+                {out_degree,
+                 equals(length(out_neighbours(G, V1)), out_degree(G, V1))}
+               ]
               )
             )
          )
