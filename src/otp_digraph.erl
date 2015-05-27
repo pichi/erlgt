@@ -53,6 +53,7 @@
         , sinks/1
         , delete/1
         , has_edge/3
+        , has_path/2
         ]).
 
 -ifdef(TEST).
@@ -108,6 +109,8 @@ sinks(G) -> gen_digraph:gen_sinks(G).
 delete({_, D}) -> digraph:delete(D).
 
 has_edge(G, V1, V2) -> lists:member(V2, out_neighbours(G, V1)).
+
+has_path(G, P) -> gen_digraph:gen_has_path(G, P).
 
 %% -----------------------------------------------------------------------------
 %% Tests

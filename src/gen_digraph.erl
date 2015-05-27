@@ -54,6 +54,7 @@
         , sinks/1
         , delete/1
         , has_edge/3
+        , has_path/2
         ]).
 
 -export([ gen_no_edges/1
@@ -66,6 +67,7 @@
         , gen_sources/1
         , gen_sinks/1
         , gen_has_edge/3
+        , gen_has_path/2
         ]).
 
 -ifdef(TEST).
@@ -82,6 +84,7 @@
         , test_empty_vertices/1
         , prop_neighbours/1
         , prop_has_edge/1
+        , prop_has_path/1
         , gen_properties_tests/1
         , gen_properties_tests/2
         , gen_tests/1
@@ -124,6 +127,8 @@
 -callback has_edge(Graph :: gen_digraph(), V1 :: vertex(), V2 :: vertex()) ->
     boolean().
 
+-callback has_path(Graph :: gen_digraph(), [V1 :: vertex()]) -> boolean().
+
 %% -----------------------------------------------------------------------------
 %% Callback wrappers
 %% -----------------------------------------------------------------------------
@@ -153,6 +158,8 @@ sinks(?G) -> M:sinks(G).
 delete(?G) -> M:delete(G).
 
 has_edge(?G, V1, V2) -> M:has_edge(G, V1, V2).
+
+has_path(?G, P) -> M:has_path(G, P).
 
 %% -----------------------------------------------------------------------------
 %% Generic implementations
@@ -190,18 +197,24 @@ gen_sinks(G) ->
 gen_has_edge(G, V1, V2) ->
     lists:member({V1, V2}, to_edgelist(G)).
 
+gen_has_path(G, [V]) -> has_edge(G, V, V);
+gen_has_path(G, [V|T]) ->
+    has_edge(G, V, hd(T)) andalso gen_has_path(G, T).
+
 %% -----------------------------------------------------------------------------
 %% Generic properties and generators
 %% -----------------------------------------------------------------------------
 
 -ifdef(TEST).
 
-edge() -> ?SIZED(S, begin
-                        V = round(math:sqrt(S)),
-                        {integer(0, V), integer(1, V)}
-                    end).
+edge() ->
+    ?SIZED(S, begin
+                  V = round(math:sqrt(S)),
+                  {integer(0, V-1), integer(0, V)}
+              end
+          ).
 
-acyclic_edge() -> ?LET({A, B}, edge(), {A, A+B}).
+acyclic_edge() -> ?LET({A, B}, edge(), {B, A+B+1}).
 
 digraph(Edge) -> list(Edge).
 
@@ -311,6 +324,24 @@ prop_has_edge(Module) ->
          )
       ).
 
+prop_has_path(Module) ->
+    ?FORALL(
+       L, non_empty(digraph()),
+       begin
+           R = edgelist_digraph:from_edgelist(L),
+           ?FORALL(
+              P, non_empty(list(oneof(vertices(R)))),
+              ?WITH_G(
+                 L,
+                 begin
+                     Expect = gen_has_path(R, P),
+                     collect(Expect andalso {length(P), length(L)}, equals(Expect, has_path(G, P)))
+                 end
+                )
+             )
+       end
+      ).
+
 gen_properties_tests(Module) ->
     gen_properties_tests(Module, []).
 
@@ -322,6 +353,7 @@ gen_properties_tests(Module, Opts) ->
               , prop_no_vertices
               , prop_neighbours
               , prop_has_edge
+              , prop_has_path
              ],
         Prop <- [?MODULE:X(Module)]
     ].
