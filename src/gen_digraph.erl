@@ -40,7 +40,7 @@
 %% -----------------------------------------------------------------------------
 -module(gen_digraph).
 
--export_type([gen_digraph/0, vertice/0]).
+-export_type([gen_digraph/0, vertex/0]).
 
 -export([ to_edgelist/1
         , no_edges/1
@@ -92,29 +92,29 @@
 
 -type gen_digraph() :: {atom(), term()}.
 
--type vertice() :: term().
+-type vertex() :: term().
 
--callback from_edgelist([{vertice(), vertice()}]) -> gen_digraph().
+-callback from_edgelist([{vertex(), vertex()}]) -> gen_digraph().
 
--callback to_edgelist(Graph :: gen_digraph()) -> [{vertice(), vertice()}].
+-callback to_edgelist(Graph :: gen_digraph()) -> [{vertex(), vertex()}].
 
 -callback no_edges(Graph :: gen_digraph()) -> non_neg_integer().
 
--callback vertices(Graph :: gen_digraph()) -> [vertice()].
+-callback vertices(Graph :: gen_digraph()) -> [vertex()].
 
 -callback no_vertices(Graph :: gen_digraph()) -> non_neg_integer().
 
--callback in_neighbours(Graph :: gen_digraph(), V :: vertice()) -> [vertice()].
+-callback in_neighbours(Graph :: gen_digraph(), V :: vertex()) -> [vertex()].
 
--callback out_neighbours(Graph :: gen_digraph(), V :: vertice()) -> [vertice()].
+-callback out_neighbours(Graph :: gen_digraph(), V :: vertex()) -> [vertex()].
 
--callback in_degree(Graph :: gen_digraph(), V :: vertice()) -> non_neg_integer().
+-callback in_degree(Graph :: gen_digraph(), V :: vertex()) -> non_neg_integer().
 
--callback out_degree(Graph :: gen_digraph(), V :: vertice()) -> non_neg_integer().
+-callback out_degree(Graph :: gen_digraph(), V :: vertex()) -> non_neg_integer().
 
--callback sources(Graph :: gen_digraph()) -> [vertice()].
+-callback sources(Graph :: gen_digraph()) -> [vertex()].
 
--callback sinks(Graph :: gen_digraph()) -> [vertice()].
+-callback sinks(Graph :: gen_digraph()) -> [vertex()].
 
 -callback delete(Graph :: gen_digraph()) -> true.
 
