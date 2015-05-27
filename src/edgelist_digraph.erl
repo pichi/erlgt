@@ -52,6 +52,7 @@
         , sources/1
         , sinks/1
         , delete/1
+        , has_edge/3
         ]).
 
 -ifdef(TEST).
@@ -95,6 +96,8 @@ sources(G) -> gen_digraph:gen_sources(G).
 sinks(G) -> gen_digraph:gen_sinks(G).
 
 delete(_) -> true.
+
+has_edge(G, V1, V2) -> gen_digraph:gen_has_edge(G, V1, V2).
 
 %% -----------------------------------------------------------------------------
 %% Tests

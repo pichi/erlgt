@@ -53,6 +53,7 @@
         , sources/1
         , sinks/1
         , delete/1
+        , has_edge/3
         ]).
 
 -export([ gen_no_edges/1
@@ -64,6 +65,7 @@
         , gen_out_degree/2
         , gen_sources/1
         , gen_sinks/1
+        , gen_has_edge/3
         ]).
 
 -ifdef(TEST).
@@ -79,6 +81,7 @@
         , prop_no_vertices/1
         , test_empty_vertices/1
         , prop_neighbours/1
+        , prop_has_edge/1
         , gen_properties_tests/1
         , gen_properties_tests/2
         , gen_tests/1
@@ -118,6 +121,9 @@
 
 -callback delete(Graph :: gen_digraph()) -> true.
 
+-callback has_edge(Graph :: gen_digraph(), V1 :: vertex(), V2 :: vertex()) ->
+    boolean().
+
 %% -----------------------------------------------------------------------------
 %% Callback wrappers
 %% -----------------------------------------------------------------------------
@@ -145,6 +151,8 @@ sources(?G) -> M:sources(G).
 sinks(?G) -> M:sinks(G).
 
 delete(?G) -> M:delete(G).
+
+has_edge(?G, V1, V2) -> M:has_edge(G, V1, V2).
 
 %% -----------------------------------------------------------------------------
 %% Generic implementations
@@ -178,6 +186,9 @@ gen_sources(G) ->
 
 gen_sinks(G) ->
     lists:usort([ V2 || {_, V2} <- to_edgelist(G) ]).
+
+gen_has_edge(G, V1, V2) ->
+    lists:member({V1, V2}, to_edgelist(G)).
 
 %% -----------------------------------------------------------------------------
 %% Generic properties and generators
@@ -288,6 +299,18 @@ prop_neighbours(Module) ->
          )
       ).
 
+prop_has_edge(Module) ->
+    ?FORALL(
+       {{V1, V2} = E, L}, {edge(), digraph()},
+       ?WITH_G(
+          L,
+          begin
+              Expect = lists:member(E, L),
+              collect(Expect, equals(Expect, has_edge(G, V1, V2)))
+          end
+         )
+      ).
+
 gen_properties_tests(Module) ->
     gen_properties_tests(Module, []).
 
@@ -298,6 +321,7 @@ gen_properties_tests(Module, Opts) ->
               , prop_vertices
               , prop_no_vertices
               , prop_neighbours
+              , prop_has_edge
              ],
         Prop <- [?MODULE:X(Module)]
     ].
