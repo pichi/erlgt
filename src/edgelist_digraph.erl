@@ -55,6 +55,7 @@
         , has_edge/3
         , has_path/2
         , get_path/3
+        , get_cycle/2
         ]).
 
 -ifdef(TEST).
@@ -104,6 +105,8 @@ has_edge(G, V1, V2) -> gen_digraph:gen_has_edge(G, V1, V2).
 has_path(G, P) -> gen_digraph:gen_has_path(G, P).
 
 get_path(G, V1, V2) -> gen_digraph:gen_get_path(G, V1, V2).
+
+get_cycle(G, V) -> gen_digraph:gen_get_cycle(G, V).
 
 %% -----------------------------------------------------------------------------
 %% Tests

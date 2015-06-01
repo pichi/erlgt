@@ -56,6 +56,7 @@
         , has_edge/3
         , has_path/2
         , get_path/3
+        , get_cycle/2
         ]).
 
 -export([ gen_no_edges/1
@@ -70,6 +71,7 @@
         , gen_has_edge/3
         , gen_has_path/2
         , gen_get_path/3
+        , gen_get_cycle/2
         ]).
 
 -ifdef(TEST).
@@ -88,6 +90,7 @@
         , prop_has_edge/1
         , prop_has_path/1
         , prop_get_path/1
+        , prop_get_cycle/1
         , gen_properties_tests/1
         , gen_properties_tests/2
         , gen_tests/1
@@ -135,6 +138,8 @@
 -callback get_path(Graph :: gen_digraph(), V1 :: vertex(), V2 :: vertex()) ->
     [vertex()] | false.
 
+-callback get_cycle(Graph :: gen_digraph(), V :: vertex()) -> [vertex()] | false.
+
 %% -----------------------------------------------------------------------------
 %% Callback wrappers
 %% -----------------------------------------------------------------------------
@@ -168,6 +173,8 @@ has_edge(?G, V1, V2) -> M:has_edge(G, V1, V2).
 has_path(?G, P) -> M:has_path(G, P).
 
 get_path(?G, V1, V2) -> M:get_path(G, V1, V2).
+
+get_cycle(?G, V) -> M:get_cycle(G, V).
 
 %% -----------------------------------------------------------------------------
 %% Generic implementations
@@ -214,6 +221,8 @@ gen_has_path(G, V1, [V2|P]) ->
 
 gen_get_path(G, V1, V2) ->
     get_one_path(G, V2, [], out_neighbours(G, V1), [], [V1]).
+
+gen_get_cycle(G, V) -> get_path(G, V, V).
 
 -spec get_one_path(Graph :: gen_digraph(), Traget :: vertex(),
                    Stack :: [{Path :: [vertex()], ToDo :: [vertex()]}],
@@ -402,6 +411,35 @@ prop_get_path(Module) ->
        end
       ).
 
+prop_get_cycle(Module) ->
+    ?FORALL(
+       L, non_empty(digraph()),
+       begin
+           R = edgelist_digraph:from_edgelist(L),
+           ?FORALL(
+              V, oneof(vertices(R)),
+              ?WITH_G(
+                 L,
+                 begin
+                     Expect = gen_get_cycle(R, V),
+                     Cycle  = get_cycle(G, V),
+                     Class  = case Expect of
+                                  false -> false;
+                                  _ -> {Expect =:= Cycle, length(Expect)}
+                              end,
+                     ?WHENFAIL(
+                        io:format("Cycle = ~p~n", [Cycle]),
+                        collect(
+                          Class,
+                          Expect =:= Cycle orelse gen_has_path(R, Cycle)
+                         )
+                       )
+                 end
+                )
+             )
+       end
+      ).
+
 gen_properties_tests(Module) ->
     gen_properties_tests(Module, []).
 
@@ -415,6 +453,7 @@ gen_properties_tests(Module, Opts) ->
               , prop_has_edge
               , prop_has_path
               , prop_get_path
+              , prop_get_cycle
              ],
         Prop <- [?MODULE:X(Module)]
     ].
