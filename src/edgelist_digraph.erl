@@ -54,6 +54,7 @@
         , delete/1
         , has_edge/3
         , has_path/2
+        , get_path/3
         ]).
 
 -ifdef(TEST).
@@ -101,6 +102,8 @@ delete(_) -> true.
 has_edge(G, V1, V2) -> gen_digraph:gen_has_edge(G, V1, V2).
 
 has_path(G, P) -> gen_digraph:gen_has_path(G, P).
+
+get_path(G, V1, V2) -> gen_digraph:gen_get_path(G, V1, V2).
 
 %% -----------------------------------------------------------------------------
 %% Tests

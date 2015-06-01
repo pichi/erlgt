@@ -55,6 +55,7 @@
         , delete/1
         , has_edge/3
         , has_path/2
+        , get_path/3
         ]).
 
 -export([ gen_no_edges/1
@@ -68,6 +69,7 @@
         , gen_sinks/1
         , gen_has_edge/3
         , gen_has_path/2
+        , gen_get_path/3
         ]).
 
 -ifdef(TEST).
@@ -85,6 +87,7 @@
         , prop_neighbours/1
         , prop_has_edge/1
         , prop_has_path/1
+        , prop_get_path/1
         , gen_properties_tests/1
         , gen_properties_tests/2
         , gen_tests/1
@@ -129,6 +132,9 @@
 
 -callback has_path(Graph :: gen_digraph(), [V1 :: vertex()]) -> boolean().
 
+-callback get_path(Graph :: gen_digraph(), V1 :: vertex(), V2 :: vertex()) ->
+    [vertex()] | false.
+
 %% -----------------------------------------------------------------------------
 %% Callback wrappers
 %% -----------------------------------------------------------------------------
@@ -160,6 +166,8 @@ delete(?G) -> M:delete(G).
 has_edge(?G, V1, V2) -> M:has_edge(G, V1, V2).
 
 has_path(?G, P) -> M:has_path(G, P).
+
+get_path(?G, V1, V2) -> M:get_path(G, V1, V2).
 
 %% -----------------------------------------------------------------------------
 %% Generic implementations
@@ -204,6 +212,26 @@ gen_has_path(_, _, []) -> true;
 gen_has_path(G, V1, [V2|P]) ->
     has_edge(G, V1, V2) andalso gen_has_path(G, V2, P).
 
+gen_get_path(G, V1, V2) ->
+    get_one_path(G, V2, [], out_neighbours(G, V1), [], [V1]).
+
+-spec get_one_path(Graph :: gen_digraph(), Traget :: vertex(),
+                   Stack :: [{Path :: [vertex()], ToDo :: [vertex()]}],
+                   Neighbours :: [vertex()],
+                   Seen  :: [vertex()], Path :: [vertex()]) ->
+    [vertex()] | false.
+get_one_path(_, _, [], [], _, _) -> false;
+get_one_path(G, T, [{P, Ns}|S], [], Seen, _) ->
+    get_one_path(G, T, S, Ns, Seen, P);
+get_one_path(_, T, _, [T|_], _, [T] = P) -> P;
+get_one_path(_, T, _, [T|_], _, P) -> lists:reverse(P, [T]);
+get_one_path(G, T, S, [V|Ns], Seen, P) ->
+    case lists:member(V, Seen) of
+        true  -> get_one_path(G, T, S, Ns, Seen, P);
+        false ->
+            get_one_path(G, T, [{P, Ns}|S], out_neighbours(G, V), [V|Seen],
+                         [V|P])
+    end.
 %% -----------------------------------------------------------------------------
 %% Generic properties and generators
 %% -----------------------------------------------------------------------------
@@ -345,6 +373,35 @@ prop_has_path(Module) ->
        end
       ).
 
+prop_get_path(Module) ->
+    ?FORALL(
+       L, non_empty(digraph()),
+       begin
+           R = edgelist_digraph:from_edgelist(L),
+           ?FORALL(
+              {V1, V2}, {oneof(sources(R)), oneof(sinks(R))},
+              ?WITH_G(
+                 L,
+                 begin
+                     Expect = gen_get_path(R, V1, V2),
+                     Path   = get_path(G, V1, V2),
+                     Class  = case Expect of
+                                  false -> false;
+                                  _ -> {Expect =:= Path, length(Expect)}
+                              end,
+                     ?WHENFAIL(
+                        io:format("Path = ~p~n", [Path]),
+                        collect(
+                          Class,
+                          Expect =:= Path orelse gen_has_path(R, Path)
+                         )
+                       )
+                 end
+                )
+             )
+       end
+      ).
+
 gen_properties_tests(Module) ->
     gen_properties_tests(Module, []).
 
@@ -357,6 +414,7 @@ gen_properties_tests(Module, Opts) ->
               , prop_neighbours
               , prop_has_edge
               , prop_has_path
+              , prop_get_path
              ],
         Prop <- [?MODULE:X(Module)]
     ].
