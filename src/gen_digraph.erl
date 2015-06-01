@@ -198,8 +198,11 @@ gen_has_edge(G, V1, V2) ->
     lists:member({V1, V2}, to_edgelist(G)).
 
 gen_has_path(G, [V]) -> has_edge(G, V, V);
-gen_has_path(G, [V|T]) ->
-    has_edge(G, V, hd(T)) andalso gen_has_path(G, T).
+gen_has_path(G, [V|P]) -> gen_has_path(G, V, P).
+
+gen_has_path(_, _, []) -> true;
+gen_has_path(G, V1, [V2|P]) ->
+    has_edge(G, V1, V2) andalso gen_has_path(G, V2, P).
 
 %% -----------------------------------------------------------------------------
 %% Generic properties and generators
@@ -364,5 +367,8 @@ gen_tests(Module) ->
         Test <- [?MODULE:X(Module)]
     ].
 
+gen_has_path_test() ->
+    R = edgelist_digraph:from_edgelist([{0, 0}, {0, 1}]),
+    ?assertEqual(true, gen_has_path(R, [0, 1])).
 
 -endif. %% TEST
