@@ -71,6 +71,8 @@
         , gen_has_edge/3
         , gen_has_path/2
         , gen_get_path/3
+        , gen_get_path_lists/3
+        , gen_get_path_maps/3
         , gen_get_cycle/2
         ]).
 
@@ -220,7 +222,13 @@ gen_has_path(G, V1, [V2|P]) ->
     has_edge(G, V1, V2) andalso gen_has_path(G, V2, P).
 
 gen_get_path(G, V1, V2) ->
+    gen_get_path_maps(G, V1, V2).
+
+gen_get_path_lists(G, V1, V2) ->
     get_one_path(G, V2, [], out_neighbours(G, V1), [V1], [V1]).
+
+gen_get_path_maps(G, V1, V2) ->
+    get_one_path(G, V2, [], out_neighbours(G, V1), maps:from_list([{V1, []}]), [V1]).
 
 gen_get_cycle(G, V) -> get_path(G, V, V).
 
@@ -231,16 +239,22 @@ gen_get_cycle(G, V) -> get_path(G, V, V).
     [vertex()] | false.
 get_one_path(_, T, _, [T|_], _, P) -> lists:reverse(P, [T]);
 get_one_path(G, T, S, [V|Ns], Seen, P) ->
-    case lists:member(V, Seen) of
+    case seen(V, Seen) of
         true  -> get_one_path(G, T, S, Ns, Seen, P);
         false ->
             S2  = [Ns|S],
             Ns2 = out_neighbours(G, V),
-            get_one_path( G, T, S2, Ns2, [V|Seen], [V|P])
+            get_one_path( G, T, S2, Ns2, add2seen(V,Seen), [V|P])
     end;
 get_one_path(G, T, [Ns|S], [], Seen, P) ->
     get_one_path(G, T, S, Ns, Seen, tl(P));
 get_one_path(_, _, [], [], _, _) -> false.
+
+seen(V, #{} = Seen) -> maps:is_key(V, Seen);
+seen(V, Seen) -> lists:member(V, Seen).
+
+add2seen(V, #{} = Seen) -> maps:put(V, [], Seen);
+add2seen(V, Seen) -> [V|Seen].
 
 %% -----------------------------------------------------------------------------
 %% Generic properties and generators
@@ -400,7 +414,7 @@ prop_get_path(Module) ->
               ?WITH_G(
                  L,
                  begin
-                     Expect = gen_get_path(R, V1, V2),
+                     Expect = gen_get_path_lists(R, V1, V2),
                      Path   = get_path(G, V1, V2),
                      Class  = case Expect of
                                   false -> false;
@@ -430,7 +444,7 @@ prop_get_cycle(Module) ->
               ?WITH_G(
                  L,
                  begin
-                     Expect = gen_get_cycle(R, V),
+                     Expect = gen_get_path_lists(R, V, V),
                      Cycle  = get_cycle(G, V),
                      Class  = case Expect of
                                   false -> false;
