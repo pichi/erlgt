@@ -225,22 +225,23 @@ gen_get_path(G, V1, V2) ->
 gen_get_cycle(G, V) -> get_path(G, V, V).
 
 -spec get_one_path(Graph :: gen_digraph(), Traget :: vertex(),
-                   Stack :: [{Path :: [vertex()], ToDo :: [vertex()]}],
+                   Stack :: [ToDo :: [vertex()]],
                    Neighbours :: [vertex()],
                    Seen  :: [vertex()], Path :: [vertex()]) ->
     [vertex()] | false.
-get_one_path(_, _, [], [], _, _) -> false;
-get_one_path(G, T, [{P, Ns}|S], [], Seen, _) ->
-    get_one_path(G, T, S, Ns, Seen, P);
-get_one_path(_, T, _, [T|_], _, [T] = P) -> P;
 get_one_path(_, T, _, [T|_], _, P) -> lists:reverse(P, [T]);
 get_one_path(G, T, S, [V|Ns], Seen, P) ->
     case lists:member(V, Seen) of
         true  -> get_one_path(G, T, S, Ns, Seen, P);
         false ->
-            get_one_path(G, T, [{P, Ns}|S], out_neighbours(G, V), [V|Seen],
-                         [V|P])
-    end.
+            S2  = [Ns|S],
+            Ns2 = out_neighbours(G, V),
+            get_one_path( G, T, S2, Ns2, [V|Seen], [V|P])
+    end;
+get_one_path(G, T, [Ns|S], [], Seen, P) ->
+    get_one_path(G, T, S, Ns, Seen, tl(P));
+get_one_path(_, _, [], [], _, _) -> false.
+
 %% -----------------------------------------------------------------------------
 %% Generic properties and generators
 %% -----------------------------------------------------------------------------
