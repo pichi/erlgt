@@ -57,6 +57,7 @@
         , has_path/2
         , get_path/3
         , get_cycle/2
+        , get_short_path/3
         ]).
 
 -export([ gen_no_edges/1
@@ -74,6 +75,9 @@
         , gen_get_path_lists/3
         , gen_get_path_maps/3
         , gen_get_cycle/2
+        , gen_get_short_path/3
+        , gen_get_short_path_maps/3
+        , gen_get_short_path_lists/3
         ]).
 
 -ifdef(TEST).
@@ -142,6 +146,9 @@
 
 -callback get_cycle(Graph :: gen_digraph(), V :: vertex()) -> [vertex()] | false.
 
+-callback get_short_path(Graph :: gen_digraph(), V1 :: vertex(), V2 :: vertex()) ->
+    [vertex()] | false.
+
 %% -----------------------------------------------------------------------------
 %% Callback wrappers
 %% -----------------------------------------------------------------------------
@@ -177,6 +184,8 @@ has_path(?G, P) -> M:has_path(G, P).
 get_path(?G, V1, V2) -> M:get_path(G, V1, V2).
 
 get_cycle(?G, V) -> M:get_cycle(G, V).
+
+get_short_path(?G, V1, V2) -> M:get_short_path(G, V1, V2).
 
 %% -----------------------------------------------------------------------------
 %% Generic implementations
@@ -232,6 +241,15 @@ gen_get_path_maps(G, V1, V2) ->
 
 gen_get_cycle(G, V) -> get_path(G, V, V).
 
+gen_get_short_path(G, V1, V2) ->
+    gen_get_short_path_maps(G, V1, V2).
+
+gen_get_short_path_maps(G, V1, V2) ->
+    get_one_short_path(G, V2, [[V1]], [], #{}).
+
+gen_get_short_path_lists(G, V1, V2) ->
+    get_one_short_path(G, V2, [[V1]], [], []).
+
 -spec get_one_path(Graph :: gen_digraph(), Traget :: vertex(),
                    Stack :: [ToDo :: [vertex()]],
                    Neighbours :: [vertex()],
@@ -249,6 +267,24 @@ get_one_path(G, T, S, [V|Ns], Seen, P) ->
 get_one_path(G, T, [Ns|S], [], Seen, P) ->
     get_one_path(G, T, S, Ns, Seen, tl(P));
 get_one_path(_, _, [], [], _, _) -> false.
+
+get_one_short_path(G, T, [[V|_]=P|Current], Next, Seen) ->
+    get_one_short_path(G, T, Current, Next, Seen, P, out_neighbours(G, V));
+get_one_short_path(_, _, [], [], _) -> false;
+get_one_short_path(G, T, [], Next, Seen) ->
+    get_one_short_path(G, T, Next, [], Seen).
+
+get_one_short_path(_, T, _, _, _, P, [T|_]) -> lists:reverse(P, [T]);
+get_one_short_path(G, T, Current, Next, Seen, P, [V|Ns]) ->
+    case seen(V, Seen) of
+        true ->
+            get_one_short_path(G, T, Current, Next, Seen, P, Ns);
+        false ->
+            get_one_short_path(G, T, Current, [[V|P]|Next],
+                               add2seen(V, Seen), P, Ns)
+    end;
+get_one_short_path(G, T, Current, Next, Seen, _, []) ->
+    get_one_short_path(G, T, Current, Next, Seen).
 
 seen(V, #{} = Seen) -> maps:is_key(V, Seen);
 seen(V, Seen) -> lists:member(V, Seen).
@@ -414,18 +450,36 @@ prop_get_path(Module) ->
               ?WITH_G(
                  L,
                  begin
-                     Expect = gen_get_path_lists(R, V1, V2),
-                     Path   = get_path(G, V1, V2),
-                     Class  = case Expect of
-                                  false -> false;
-                                  _ -> {Expect =:= Path, length(Expect)}
-                              end,
+                     Expect   = gen_get_path_lists(R, V1, V2),
+                     S_Expect = gen_get_short_path_lists(R, V1, V2),
+                     Path     = get_path(G, V1, V2),
+                     S_Path   = get_short_path(G, V1, V2),
+                     Classes  = case Expect of
+                                    false -> [false];
+                                    _ -> [{Expect =:= Path, length(Expect)},
+                                          {S_Expect =:= S_Path,
+                                           length(S_Expect), length(Expect)}]
+                                end,
                      ?WHENFAIL(
-                        io:format("Path = ~p~n", [Path]),
-                        collect(
-                          Class,
-                          is_simple(Path) andalso (Expect =:= Path orelse
-                                                   gen_has_path(R, Path))
+                        io:format("Path  = ~p (~p)~n"
+                                  "Short = ~p (~p)~n",
+                                  [Path, Expect, S_Path, S_Expect]),
+                        aggregate(
+                          Classes,
+                          case Expect of
+                              false ->
+                                  S_Expect =:= false andalso
+                                  Path     =:= false andalso
+                                  S_Path   =:= false;
+                              _ ->
+                                  conjunction(
+                                    [{any,   is_simple(Path) andalso gen_has_path(R, Path)},
+                                     {short,
+                                      is_simple(S_Path)       andalso
+                                      gen_has_path(R, S_Path) andalso
+                                      length(S_Expect) =:= length(S_Path)}]
+                                   )
+                          end
                          )
                        )
                  end

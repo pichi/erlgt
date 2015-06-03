@@ -56,6 +56,7 @@
         , has_path/2
         , get_path/3
         , get_cycle/2
+        , get_short_path/3
         ]).
 
 -ifdef(TEST).
@@ -117,6 +118,8 @@ has_path(G, P) -> gen_digraph:gen_has_path(G, P).
 get_path({_, D}, V1, V2) -> digraph:get_path(D, V1, V2).
 
 get_cycle({_, D}, V) -> digraph:get_cycle(D, V).
+
+get_short_path({_, D}, V1, V2) -> digraph:get_short_path(D, V1, V2).
 
 %% -----------------------------------------------------------------------------
 %% Tests
