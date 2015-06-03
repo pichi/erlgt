@@ -220,7 +220,7 @@ gen_has_path(G, V1, [V2|P]) ->
     has_edge(G, V1, V2) andalso gen_has_path(G, V2, P).
 
 gen_get_path(G, V1, V2) ->
-    get_one_path(G, V2, [], out_neighbours(G, V1), [], [V1]).
+    get_one_path(G, V2, [], out_neighbours(G, V1), [V1], [V1]).
 
 gen_get_cycle(G, V) -> get_path(G, V, V).
 
@@ -261,6 +261,13 @@ digraph(Edge) -> list(Edge).
 digraph() -> digraph(edge()).
 
 acyclic_digraph() -> digraph(acyclic_edge()).
+
+is_simple(false) -> true;
+is_simple(P) ->
+    LoP = length(P),
+    LoU = length(lists:usort(P)),
+    LoP =:= LoU orelse
+    hd(P) =:= lists:last(P) andalso LoP =:= LoU + 1. % cycle
 
 %% Warning! This macro can be used only as the innermost macro of a property
 %% because it deletes graph `G'. In other words, If action `Do' returns
@@ -402,7 +409,8 @@ prop_get_path(Module) ->
                         io:format("Path = ~p~n", [Path]),
                         collect(
                           Class,
-                          Expect =:= Path orelse gen_has_path(R, Path)
+                          is_simple(Path) andalso (Expect =:= Path orelse
+                                                   gen_has_path(R, Path))
                          )
                        )
                  end
@@ -431,7 +439,8 @@ prop_get_cycle(Module) ->
                         io:format("Cycle = ~p~n", [Cycle]),
                         collect(
                           Class,
-                          Expect =:= Cycle orelse gen_has_path(R, Cycle)
+                          is_simple(Cycle) andalso (Expect =:= Cycle orelse
+                                                    gen_has_path(R, Cycle))
                          )
                        )
                  end
@@ -467,5 +476,9 @@ gen_tests(Module) ->
 gen_has_path_test() ->
     R = edgelist_digraph:from_edgelist([{0, 0}, {0, 1}]),
     ?assertEqual(true, gen_has_path(R, [0, 1])).
+
+gen_get_path_simple_path_test() ->
+    R = edgelist_digraph:from_edgelist([{0, 0}, {0, 1}]),
+    ?assertEqual([0,1], gen_get_path(R, 0, 1)).
 
 -endif. %% TEST
