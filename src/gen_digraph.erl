@@ -58,6 +58,7 @@
         , get_path/3
         , get_cycle/2
         , get_short_path/3
+        , get_short_cycle/2
         ]).
 
 -export([ gen_no_edges/1
@@ -78,6 +79,7 @@
         , gen_get_short_path/3
         , gen_get_short_path_maps/3
         , gen_get_short_path_lists/3
+        , gen_get_short_cycle/2
         ]).
 
 -ifdef(TEST).
@@ -149,6 +151,9 @@
 -callback get_short_path(Graph :: gen_digraph(), V1 :: vertex(), V2 :: vertex()) ->
     [vertex()] | false.
 
+-callback get_short_cycle(Graph :: gen_digraph(), V :: vertex()) ->
+    [vertex()] | false.
+
 %% -----------------------------------------------------------------------------
 %% Callback wrappers
 %% -----------------------------------------------------------------------------
@@ -186,6 +191,8 @@ get_path(?G, V1, V2) -> M:get_path(G, V1, V2).
 get_cycle(?G, V) -> M:get_cycle(G, V).
 
 get_short_path(?G, V1, V2) -> M:get_short_path(G, V1, V2).
+
+get_short_cycle(?G, V) -> M:get_short_cycle(G, V).
 
 %% -----------------------------------------------------------------------------
 %% Generic implementations
@@ -249,6 +256,8 @@ gen_get_short_path_maps(G, V1, V2) ->
 
 gen_get_short_path_lists(G, V1, V2) ->
     get_one_short_path(G, V2, [[V1]], [], []).
+
+gen_get_short_cycle(G, V) -> get_short_path(G, V, V).
 
 -spec get_one_path(Graph :: gen_digraph(), Traget :: vertex(),
                    Stack :: [ToDo :: [vertex()]],
@@ -498,18 +507,37 @@ prop_get_cycle(Module) ->
               ?WITH_G(
                  L,
                  begin
-                     Expect = gen_get_path_lists(R, V, V),
-                     Cycle  = get_cycle(G, V),
-                     Class  = case Expect of
-                                  false -> false;
-                                  _ -> {Expect =:= Cycle, length(Expect)}
-                              end,
+                     Expect   = gen_get_path_lists(R, V, V),
+                     S_Expect = gen_get_short_path_lists(R, V, V),
+                     Cycle    = get_cycle(G, V),
+                     S_Cycle  = get_short_cycle(G, V),
+                     Classes  = case Expect of
+                                    false -> [false];
+                                    _ -> [{Expect =:= Cycle, length(Expect)},
+                                          {S_Expect =:= S_Cycle,
+                                           length(S_Expect), length(Expect)}]
+                                end,
                      ?WHENFAIL(
-                        io:format("Cycle = ~p~n", [Cycle]),
-                        collect(
-                          Class,
-                          is_simple(Cycle) andalso (Expect =:= Cycle orelse
-                                                    gen_has_path(R, Cycle))
+                        io:format("Cycle = ~p (~p)~n"
+                                  "Short = ~p (~p)~n",
+                                  [Cycle, Expect, S_Cycle, S_Expect]),
+                        aggregate(
+                          Classes,
+                          case Expect of
+                              false ->
+                                  S_Expect =:= false andalso
+                                  Cycle    =:= false andalso
+                                  S_Cycle  =:= false;
+                              _ ->
+                                  conjunction(
+                                    [{any,   is_simple(Cycle) andalso
+                                      gen_has_path(R, Cycle)},
+                                     {short,
+                                      is_simple(S_Cycle)       andalso
+                                      gen_has_path(R, S_Cycle) andalso
+                                      length(S_Expect) =:= length(S_Cycle)}]
+                                   )
+                          end
                          )
                        )
                  end
