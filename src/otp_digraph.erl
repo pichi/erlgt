@@ -118,7 +118,11 @@ has_path(G, P) -> gen_digraph:gen_has_path(G, P).
 
 get_path({_, D}, V1, V2) -> digraph:get_path(D, V1, V2).
 
-get_cycle({_, D}, V) -> digraph:get_cycle(D, V).
+get_cycle({_, D}, V) ->
+    case digraph:get_cycle(D, V) of
+        [V] = P -> [V|P];
+        P -> P
+    end.
 
 get_short_path({_, D}, V1, V2) -> digraph:get_short_path(D, V1, V2).
 

@@ -230,7 +230,6 @@ gen_sinks(G) ->
 gen_has_edge(G, V1, V2) ->
     lists:member({V1, V2}, to_edgelist(G)).
 
-gen_has_path(G, [V]) -> has_edge(G, V, V);
 gen_has_path(G, [V|P]) -> gen_has_path(G, V, P).
 
 gen_has_path(_, _, []) -> true;
@@ -322,12 +321,16 @@ digraph() -> digraph(edge()).
 
 acyclic_digraph() -> digraph(acyclic_edge()).
 
-is_simple(false) -> true;
-is_simple(P) ->
+is_simple_path(R, V1, V2, P) ->
     LoP = length(P),
     LoU = length(lists:usort(P)),
-    LoP =:= LoU orelse
-    hd(P) =:= lists:last(P) andalso LoP =:= LoU + 1. % cycle
+    case {hd(P), lists:last(P)} of
+        {V1, V2} when V1 =:= V2 ->
+            LoP =:= LoU + 1; % cycle
+        {V1, V2} ->
+            LoP =:= LoU;
+        _ -> false
+    end andalso has_path(R, P).
 
 %% Warning! This macro can be used only as the innermost macro of a property
 %% because it deletes graph `G'. In other words, If action `Do' returns
@@ -482,10 +485,9 @@ prop_get_path(Module) ->
                                   S_Path   =:= false;
                               _ ->
                                   conjunction(
-                                    [{any,   is_simple(Path) andalso gen_has_path(R, Path)},
+                                    [{any, is_simple_path(R, V1, V2, Path)},
                                      {short,
-                                      is_simple(S_Path)       andalso
-                                      gen_has_path(R, S_Path) andalso
+                                      is_simple_path(R, V1, V2, S_Path) andalso
                                       length(S_Expect) =:= length(S_Path)}]
                                    )
                           end
@@ -530,11 +532,9 @@ prop_get_cycle(Module) ->
                                   S_Cycle  =:= false;
                               _ ->
                                   conjunction(
-                                    [{any,   is_simple(Cycle) andalso
-                                      gen_has_path(R, Cycle)},
+                                    [{any, is_simple_path(R, V, V, Cycle)},
                                      {short,
-                                      is_simple(S_Cycle)       andalso
-                                      gen_has_path(R, S_Cycle) andalso
+                                      is_simple_path(R, V, V, S_Cycle) andalso
                                       length(S_Expect) =:= length(S_Cycle)}]
                                    )
                           end
