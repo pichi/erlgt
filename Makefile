@@ -69,9 +69,9 @@ eunit: compile
 
 test: eunit
 
-shell: deps compile
-	- @$(REBAR) skip_deps=true eunit
-	@$(ERL) $(ERLFLAGS)
+shell: deps
+	- @$(REBAR) skip_deps=true eunit suite=gen_digraph
+	- @$(ERL) $(ERLFLAGS)
 
 clean:
 	- rm -rf $(CURDIR)/test/*.beam
