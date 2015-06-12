@@ -59,6 +59,10 @@
         , get_cycle/2
         , get_short_path/3
         , get_short_cycle/2
+        , reachable/2
+        , reachable_neighbours/2
+        , reaching/2
+        , reaching_neighbours/2
         ]).
 
 -export([ gen_no_edges/1
@@ -80,6 +84,10 @@
         , gen_get_short_path_maps/3
         , gen_get_short_path_lists/3
         , gen_get_short_cycle/2
+        , gen_reachable/2
+        , gen_reachable_neighbours/2
+        , gen_reaching/2
+        , gen_reaching_neighbours/2
         ]).
 
 -ifdef(TEST).
@@ -99,6 +107,7 @@
         , prop_has_path/1
         , prop_get_path/1
         , prop_get_cycle/1
+        , prop_reachable/1
         , gen_properties_tests/1
         , gen_properties_tests/2
         , gen_tests/1
@@ -154,6 +163,16 @@
 -callback get_short_cycle(Graph :: gen_digraph(), V :: vertex()) ->
     [vertex()] | false.
 
+-callback reachable(Graph :: gen_digraph(), Vs :: [vertex()]) -> [vertex()].
+
+-callback reachable_neighbours(Graph :: gen_digraph(), Vs :: [vertex()]) ->
+    [vertex()].
+
+-callback reaching(Graph :: gen_digraph(), Vs :: [vertex()]) -> [vertex()].
+
+-callback reaching_neighbours(Graph :: gen_digraph(), Vs :: [vertex()]) ->
+    [vertex()].
+
 %% -----------------------------------------------------------------------------
 %% Callback wrappers
 %% -----------------------------------------------------------------------------
@@ -193,6 +212,14 @@ get_cycle(?G, V) -> M:get_cycle(G, V).
 get_short_path(?G, V1, V2) -> M:get_short_path(G, V1, V2).
 
 get_short_cycle(?G, V) -> M:get_short_cycle(G, V).
+
+reachable(?G, V) -> M:reachable(G, V).
+
+reachable_neighbours(?G, V) -> M:reachable_neighbours(G, V).
+
+reaching(?G, V) -> M:reaching(G, V).
+
+reaching_neighbours(?G, V) -> M:reaching_neighbours(G, V).
 
 %% -----------------------------------------------------------------------------
 %% Generic implementations
@@ -258,6 +285,20 @@ gen_get_short_path_lists(G, V1, V2) ->
 
 gen_get_short_cycle(G, V) -> get_short_path(G, V, V).
 
+gen_reachable(G, Vs) ->
+    element(1, ptraverse(out(G), Vs, #{}, [])).
+
+gen_reachable_neighbours(G, Vs) ->
+    Out = out(G),
+    element(1, ptraverse(Out, [V || X <- Vs, V <- Out(X) ], #{}, [])).
+
+gen_reaching(G, Vs) ->
+    element(1, ptraverse(in(G), Vs, #{}, [])).
+
+gen_reaching_neighbours(G, Vs) ->
+    In = in(G),
+    element(1, ptraverse(In, [V || X <- Vs, V <- In(X) ], #{}, [])).
+
 -spec get_one_path(Graph :: gen_digraph(), Traget :: vertex(),
                    Stack :: [ToDo :: [vertex()]],
                    Neighbours :: [vertex()],
@@ -294,11 +335,34 @@ get_one_short_path(G, T, Current, Next, Seen, P, [V|Ns]) ->
 get_one_short_path(G, T, Current, Next, Seen, _, []) ->
     get_one_short_path(G, T, Current, Next, Seen).
 
+ptraverse(F, [V|Vs], Seen, Acc) ->
+    case seen(V, Seen) of
+        true  ->
+            ptraverse(F, Vs, Seen, Acc);
+        false ->
+            NewSeen = add2seen(V, Seen),
+            ptraverse(F, not_seen(NewSeen, F(V), Vs), NewSeen, [V|Acc])
+    end;
+ptraverse(_, [], Seen, Acc) -> {Acc, Seen}.
+
 seen(V, #{} = Seen) -> maps:is_key(V, Seen);
 seen(V, Seen) -> lists:member(V, Seen).
 
 add2seen(V, #{} = Seen) -> maps:put(V, [], Seen);
 add2seen(V, Seen) -> [V|Seen].
+
+not_seen(_, [], Acc) -> Acc;
+not_seen(Seen, [V|Vs], Acc) ->
+    case seen(V, Seen) of
+        true  -> not_seen(Seen, Vs, Acc);
+        false -> not_seen(Seen, Vs, [V|Acc])
+    end.
+
+out(G) ->
+    fun(X) -> out_neighbours(G, X) end.
+
+in(G) ->
+    fun(X) -> in_neighbours(G, X) end.
 
 %% -----------------------------------------------------------------------------
 %% Generic properties and generators
@@ -546,6 +610,55 @@ prop_get_cycle(Module) ->
        end
       ).
 
+prop_reachable(Module) ->
+    ?FORALL(
+       L, non_empty(digraph()),
+       begin
+           R = edgelist_digraph:from_edgelist(L),
+           Vs = vertices(R),
+           ?FORALL(
+              {Ss, V}, {list(oneof(Vs)), oneof(Vs)},
+              ?WITH_G(
+                 L,
+                 begin
+                     HasPath = lists:any(
+                                 fun(X) -> get_path(G, X, V) =/= false end,
+                                 Ss),
+                     HasRevPath = lists:any(
+                                 fun(X) -> get_path(G, V, X) =/= false end,
+                                 Ss),
+                     collect(
+                       HasPath,
+                       conjunction(
+                         [{reachable,
+                           equals(
+                             HasPath orelse lists:member(V, Ss),
+                             lists:member(V, reachable(G, Ss))
+                            )},
+                          {reachable_neighbours,
+                           equals(
+                             HasPath,
+                             lists:member(V, reachable_neighbours(G, Ss))
+                            )},
+                          {reaching,
+                           equals(
+                             HasRevPath orelse lists:member(V, Ss),
+                             lists:member(V, reaching(G, Ss))
+                            )},
+                          {reaching_neighbours,
+                           equals(
+                             HasRevPath,
+                             lists:member(V, reaching_neighbours(G, Ss))
+                            )}
+                         ]
+                        )
+                      )
+                 end
+                )
+             )
+       end
+      ).
+
 gen_properties_tests(Module) ->
     gen_properties_tests(Module, []).
 
@@ -560,6 +673,7 @@ gen_properties_tests(Module, Opts) ->
               , prop_has_path
               , prop_get_path
               , prop_get_cycle
+              , prop_reachable
              ],
         Prop <- [?MODULE:X(Module)]
     ].

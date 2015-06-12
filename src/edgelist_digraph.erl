@@ -58,6 +58,10 @@
         , get_cycle/2
         , get_short_path/3
         , get_short_cycle/2
+        , reachable/2
+        , reachable_neighbours/2
+        , reaching/2
+        , reaching_neighbours/2
         ]).
 
 -ifdef(TEST).
@@ -113,6 +117,14 @@ get_cycle(G, V) -> gen_digraph:gen_get_cycle(G, V).
 get_short_path(G, V1, V2) -> gen_digraph:gen_get_short_path(G, V1, V2).
 
 get_short_cycle(G, V) -> gen_digraph:gen_get_short_cycle(G, V).
+
+reachable(G, Vs) -> gen_digraph:gen_reachable(G, Vs).
+
+reachable_neighbours(G, Vs) -> gen_digraph:gen_reachable_neighbours(G, Vs).
+
+reaching(G, Vs) -> gen_digraph:gen_reaching(G, Vs).
+
+reaching_neighbours(G, Vs) -> gen_digraph:gen_reaching_neighbours(G, Vs).
 
 %% -----------------------------------------------------------------------------
 %% Tests
