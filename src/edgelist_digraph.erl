@@ -62,6 +62,7 @@
         , reachable_neighbours/2
         , reaching/2
         , reaching_neighbours/2
+        , components/1
         ]).
 
 -ifdef(TEST).
@@ -125,6 +126,8 @@ reachable_neighbours(G, Vs) -> gen_digraph:gen_reachable_neighbours(G, Vs).
 reaching(G, Vs) -> gen_digraph:gen_reaching(G, Vs).
 
 reaching_neighbours(G, Vs) -> gen_digraph:gen_reaching_neighbours(G, Vs).
+
+components(G) -> gen_digraph:gen_components(G).
 
 %% -----------------------------------------------------------------------------
 %% Tests

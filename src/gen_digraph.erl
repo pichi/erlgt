@@ -63,6 +63,7 @@
         , reachable_neighbours/2
         , reaching/2
         , reaching_neighbours/2
+        , components/1
         ]).
 
 -export([ gen_no_edges/1
@@ -88,6 +89,7 @@
         , gen_reachable_neighbours/2
         , gen_reaching/2
         , gen_reaching_neighbours/2
+        , gen_components/1
         ]).
 
 -ifdef(TEST).
@@ -108,6 +110,7 @@
         , prop_get_path/1
         , prop_get_cycle/1
         , prop_reachable/1
+        , prop_components/1
         , gen_properties_tests/1
         , gen_properties_tests/2
         , gen_tests/1
@@ -173,6 +176,8 @@
 -callback reaching_neighbours(Graph :: gen_digraph(), Vs :: [vertex()]) ->
     [vertex()].
 
+-callback components(Graph :: gen_digraph()) -> [[vertex()]].
+
 %% -----------------------------------------------------------------------------
 %% Callback wrappers
 %% -----------------------------------------------------------------------------
@@ -220,6 +225,8 @@ reachable_neighbours(?G, V) -> M:reachable_neighbours(G, V).
 reaching(?G, V) -> M:reaching(G, V).
 
 reaching_neighbours(?G, V) -> M:reaching_neighbours(G, V).
+
+components(?G) -> M:components(G).
 
 %% -----------------------------------------------------------------------------
 %% Generic implementations
@@ -299,6 +306,9 @@ gen_reaching_neighbours(G, Vs) ->
     In = in(G),
     element(1, ptraverse(In, [V || X <- Vs, V <- In(X) ], #{}, [])).
 
+gen_components(G) ->
+    forest(inout(G), vertices(G)).
+
 -spec get_one_path(Graph :: gen_digraph(), Traget :: vertex(),
                    Stack :: [ToDo :: [vertex()]],
                    Neighbours :: [vertex()],
@@ -345,6 +355,18 @@ ptraverse(F, [V|Vs], Seen, Acc) ->
     end;
 ptraverse(_, [], Seen, Acc) -> {Acc, Seen}.
 
+forest(F, Vs) ->
+    forest(F, Vs, #{}, []).
+
+forest(_, [], _, Acc) -> Acc;
+forest(F, [V|Vs], Seen, Acc) ->
+    case ptraverse(F, [V], Seen, []) of
+        {[], Seen} ->
+            forest(F, Vs, Seen, Acc);
+        {[_|_] = Component, NewSeen} ->
+            forest(F, Vs, NewSeen, [Component|Acc])
+    end.
+
 seen(V, #{} = Seen) -> maps:is_key(V, Seen);
 seen(V, Seen) -> lists:member(V, Seen).
 
@@ -363,6 +385,9 @@ out(G) ->
 
 in(G) ->
     fun(X) -> in_neighbours(G, X) end.
+
+inout(G) ->
+    fun(X) -> in_neighbours(G, X) ++ out_neighbours(G, X) end.
 
 %% -----------------------------------------------------------------------------
 %% Generic properties and generators
@@ -659,6 +684,44 @@ prop_reachable(Module) ->
        end
       ).
 
+prop_components(Module) ->
+    ?FORALL(
+       L, non_empty(digraph()),
+       begin
+           R  = edgelist_digraph:from_edgelist(L),
+           UR = edgelist_digraph:from_edgelist(
+                  [{V2, V1} || {V1, V2} <- L] ++ L),
+           Vs = lists:sort(vertices(R)),
+           ?FORALL(
+              {V1, V2}, {oneof(Vs), oneof(Vs)},
+              ?WITH_G(
+                 L,
+                 begin
+                     Cs = components(G),
+                     [C] = [X || X <- Cs, lists:member(V1, X)],
+                     Class = {case V1 =:= V2 of
+                                  true  -> same;
+                                  false -> lists:member(V2, C)
+                              end,
+                              length(Cs)},
+                     collect(
+                       Class,
+                       conjunction(
+                         [{all_vertices,
+                           Vs =:= lists:sort(lists:append(Cs))},
+                          {path,
+                           V1 =:= V2 orelse
+                           equals(
+                             lists:member(V2, C),
+                             get_path(UR, V1, V2) =/= false)}
+                         ])
+                      )
+                 end
+                )
+             )
+       end
+      ).
+
 gen_properties_tests(Module) ->
     gen_properties_tests(Module, []).
 
@@ -674,6 +737,7 @@ gen_properties_tests(Module, Opts) ->
               , prop_get_path
               , prop_get_cycle
               , prop_reachable
+              , prop_components
              ],
         Prop <- [?MODULE:X(Module)]
     ].

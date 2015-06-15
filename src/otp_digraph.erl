@@ -62,6 +62,7 @@
         , reachable_neighbours/2
         , reaching/2
         , reaching_neighbours/2
+        , components/1
         ]).
 
 -ifdef(TEST).
@@ -139,6 +140,8 @@ reachable_neighbours({_, D}, Vs) -> digraph_utils:reachable_neighbours(Vs, D).
 reaching({_, D}, Vs) -> digraph_utils:reaching(Vs, D).
 
 reaching_neighbours({_, D}, Vs) -> digraph_utils:reaching_neighbours(Vs, D).
+
+components({_, D}) -> digraph_utils:components(D).
 
 %% -----------------------------------------------------------------------------
 %% Tests
