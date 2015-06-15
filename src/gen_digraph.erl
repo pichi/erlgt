@@ -64,6 +64,7 @@
         , reaching/2
         , reaching_neighbours/2
         , components/1
+        , strong_components/1
         ]).
 
 -export([ gen_no_edges/1
@@ -90,6 +91,7 @@
         , gen_reaching/2
         , gen_reaching_neighbours/2
         , gen_components/1
+        , gen_strong_components/1
         ]).
 
 -ifdef(TEST).
@@ -178,6 +180,8 @@
 
 -callback components(Graph :: gen_digraph()) -> [[vertex()]].
 
+-callback strong_components(Graph :: gen_digraph()) -> [[vertex()]].
+
 %% -----------------------------------------------------------------------------
 %% Callback wrappers
 %% -----------------------------------------------------------------------------
@@ -227,6 +231,8 @@ reaching(?G, V) -> M:reaching(G, V).
 reaching_neighbours(?G, V) -> M:reaching_neighbours(G, V).
 
 components(?G) -> M:components(G).
+
+strong_components(?G) -> M:strong_components(G).
 
 %% -----------------------------------------------------------------------------
 %% Generic implementations
@@ -309,6 +315,9 @@ gen_reaching_neighbours(G, Vs) ->
 gen_components(G) ->
     forest(inout(G), vertices(G)).
 
+gen_strong_components(G) ->
+    forest(in(G), revpostorder(G)).
+
 -spec get_one_path(Graph :: gen_digraph(), Traget :: vertex(),
                    Stack :: [ToDo :: [vertex()]],
                    Neighbours :: [vertex()],
@@ -354,6 +363,21 @@ ptraverse(F, [V|Vs], Seen, Acc) ->
             ptraverse(F, not_seen(NewSeen, F(V), Vs), NewSeen, [V|Acc])
     end;
 ptraverse(_, [], Seen, Acc) -> {Acc, Seen}.
+
+revpostorder(G) ->
+    posttraverse(G, vertices(G), [], #{}, []).
+
+posttraverse(G, [V|Vs] = State, Stack, Seen, Acc) ->
+    case seen(V, Seen) of
+        true ->
+            posttraverse(G, Vs, Stack, Seen, Acc);
+        false ->
+            Ns = not_seen(Seen, out_neighbours(G, V), []),
+            posttraverse(G, Ns, [State|Stack], add2seen(V, Seen), Acc)
+    end;
+posttraverse(G, [], [[V|Vs]|Stack], Seen, Acc) ->
+    posttraverse(G, Vs, Stack, Seen, [V|Acc]);
+posttraverse(_, [], [], _, Acc) -> Acc.
 
 forest(F, Vs) ->
     forest(F, Vs, #{}, []).
@@ -699,21 +723,33 @@ prop_components(Module) ->
                  begin
                      Cs = components(G),
                      [C] = [X || X <- Cs, lists:member(V1, X)],
-                     Class = {case V1 =:= V2 of
-                                  true  -> same;
-                                  false -> lists:member(V2, C)
-                              end,
-                              length(Cs)},
-                     collect(
-                       Class,
+                     SCs = strong_components(G),
+                     [SC] = [X || X <- SCs, lists:member(V1, X)],
+                     Classes = case V1 =:= V2 of
+                                   true  -> [same];
+                                   false ->
+                                       [{X, lists:member(V2, Y), length(Y)}
+                                        || {X, Y} <- [{components, C},
+                                                      {strong_components, SC}]]
+                               end,
+                     aggregate(
+                       Classes,
                        conjunction(
-                         [{all_vertices,
+                         [{components_vertices,
                            Vs =:= lists:sort(lists:append(Cs))},
-                          {path,
+                          {components_path,
                            V1 =:= V2 orelse
                            equals(
                              lists:member(V2, C),
-                             get_path(UR, V1, V2) =/= false)}
+                             get_path(UR, V1, V2) =/= false)},
+                          {strong_components_vertices,
+                           Vs =:= lists:sort(lists:append(SCs))},
+                          {strong_components_path,
+                           V1 =:= V2 orelse
+                           equals(
+                             lists:member(V2, SC),
+                             get_path(R, V1, V2) =/= false andalso
+                             get_path(R, V2, V1) =/= false)}
                          ])
                       )
                  end
