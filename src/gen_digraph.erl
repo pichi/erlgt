@@ -299,18 +299,18 @@ gen_get_short_path_lists(G, V1, V2) ->
 gen_get_short_cycle(G, V) -> get_short_path(G, V, V).
 
 gen_reachable(G, Vs) ->
-    element(1, ptraverse(out(G), Vs, #{}, [])).
+    revpreorder(out(G), Vs).
 
 gen_reachable_neighbours(G, Vs) ->
     Out = out(G),
-    element(1, ptraverse(Out, [V || X <- Vs, V <- Out(X) ], #{}, [])).
+    revpreorder(Out, [V || X <- Vs, V <- Out(X) ]).
 
 gen_reaching(G, Vs) ->
-    element(1, ptraverse(in(G), Vs, #{}, [])).
+    revpreorder(in(G), Vs).
 
 gen_reaching_neighbours(G, Vs) ->
     In = in(G),
-    element(1, ptraverse(In, [V || X <- Vs, V <- In(X) ], #{}, [])).
+    revpreorder(In, [V || X <- Vs, V <- In(X) ]).
 
 gen_components(G) ->
     forest(inout(G), vertices(G)).
@@ -353,6 +353,9 @@ get_one_short_path(G, T, Current, Next, Seen, P, [V|Ns]) ->
     end;
 get_one_short_path(G, T, Current, Next, Seen, _, []) ->
     get_one_short_path(G, T, Current, Next, Seen).
+
+revpreorder(F, Vs) ->
+    element(1, ptraverse(F, Vs, #{}, [])).
 
 ptraverse(F, [V|Vs], Seen, Acc) ->
     case seen(V, Seen) of
