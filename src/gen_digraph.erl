@@ -65,6 +65,7 @@
         , reaching_neighbours/2
         , components/1
         , strong_components/1
+        , preorder/1
         ]).
 
 -export([ gen_no_edges/1
@@ -92,6 +93,7 @@
         , gen_reaching_neighbours/2
         , gen_components/1
         , gen_strong_components/1
+        , gen_preorder/1
         ]).
 
 -ifdef(TEST).
@@ -113,6 +115,7 @@
         , prop_get_cycle/1
         , prop_reachable/1
         , prop_components/1
+        , prop_preorder/1
         , gen_properties_tests/1
         , gen_properties_tests/2
         , gen_tests/1
@@ -182,6 +185,8 @@
 
 -callback strong_components(Graph :: gen_digraph()) -> [[vertex()]].
 
+-callback preorder(Graph :: gen_digraph()) -> [vertex()].
+
 %% -----------------------------------------------------------------------------
 %% Callback wrappers
 %% -----------------------------------------------------------------------------
@@ -233,6 +238,8 @@ reaching_neighbours(?G, V) -> M:reaching_neighbours(G, V).
 components(?G) -> M:components(G).
 
 strong_components(?G) -> M:strong_components(G).
+
+preorder(?G) -> M:preorder(G).
 
 %% -----------------------------------------------------------------------------
 %% Generic implementations
@@ -317,6 +324,9 @@ gen_components(G) ->
 
 gen_strong_components(G) ->
     forest(in(G), revpostorder(G)).
+
+gen_preorder(G) ->
+    lists:reverse(revpreorder(out(G), vertices(G))).
 
 -spec get_one_path(Graph :: gen_digraph(), Traget :: vertex(),
                    Stack :: [ToDo :: [vertex()]],
@@ -761,6 +771,41 @@ prop_components(Module) ->
        end
       ).
 
+prop_preorder(Module) ->
+    ?FORALL(
+       L, non_empty(digraph()),
+       begin
+           R  = edgelist_digraph:from_edgelist(L),
+           Vs = lists:sort(vertices(R)),
+           ?WITH_G(
+              L,
+              begin
+                  P = preorder(G),
+                  conjunction(
+                    [{vertices, equals(Vs, lists:sort(P))},
+                     {order, is_preorder(R, P)}
+                    ])
+              end
+             )
+       end
+      ).
+
+is_preorder(G, P) ->
+    is_preorder(G, vertices(G), P, #{}, []).
+
+is_preorder(_, [], [], _, []) -> true;
+is_preorder(G, [], P, Seen, [Possible|Stack]) ->
+    is_preorder(G, not_seen(Seen, Possible, []), P, Seen, Stack);
+is_preorder(G, Possible, [V|P], Seen, Stack) ->
+    lists:member(V, Possible) andalso
+    begin
+        NewSeen = add2seen(V, Seen),
+        Neighbours = not_seen(NewSeen, out_neighbours(G, V), []),
+        NewStack = [Possible -- [V] | Stack],
+        is_preorder(G, Neighbours, P, NewSeen, NewStack)
+    end;
+is_preorder(_, _, _, _, _) -> false.
+
 gen_properties_tests(Module) ->
     gen_properties_tests(Module, []).
 
@@ -777,6 +822,7 @@ gen_properties_tests(Module, Opts) ->
               , prop_get_cycle
               , prop_reachable
               , prop_components
+              , prop_preorder
              ],
         Prop <- [?MODULE:X(Module)]
     ].
@@ -794,5 +840,15 @@ gen_has_path_test() ->
 gen_get_path_simple_path_test() ->
     R = edgelist_digraph:from_edgelist([{0, 0}, {0, 1}]),
     ?assertEqual([0,1], gen_get_path(R, 0, 1)).
+
+is_preorder_test_() ->
+    R = edgelist_digraph:from_edgelist([{0, 1}, {1, 2}]),
+    [ ?_assert(    is_preorder(R, [0, 1, 2]))
+    , ?_assert(not is_preorder(R, [0, 2, 1]))
+    , ?_assert(not is_preorder(R, [1, 0, 2]))
+    , ?_assert(    is_preorder(R, [1, 2, 0]))
+    , ?_assert(    is_preorder(R, [2, 0, 1]))
+    , ?_assert(    is_preorder(R, [2, 1, 0]))
+    ].
 
 -endif. %% TEST

@@ -64,6 +64,7 @@
         , reaching_neighbours/2
         , components/1
         , strong_components/1
+        , preorder/1
         ]).
 
 -ifdef(TEST).
@@ -131,6 +132,8 @@ reaching_neighbours(G, Vs) -> gen_digraph:gen_reaching_neighbours(G, Vs).
 components(G) -> gen_digraph:gen_components(G).
 
 strong_components(G) -> gen_digraph:gen_strong_components(G).
+
+preorder(G) -> gen_digraph:gen_preorder(G).
 
 %% -----------------------------------------------------------------------------
 %% Tests

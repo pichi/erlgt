@@ -64,6 +64,7 @@
         , reaching_neighbours/2
         , components/1
         , strong_components/1
+        , preorder/1
         ]).
 
 -ifdef(TEST).
@@ -145,6 +146,8 @@ reaching_neighbours({_, D}, Vs) -> digraph_utils:reaching_neighbours(Vs, D).
 components({_, D}) -> digraph_utils:components(D).
 
 strong_components({_, D}) -> digraph_utils:strong_components(D).
+
+preorder({_, D}) -> digraph_utils:preorder(D).
 
 %% -----------------------------------------------------------------------------
 %% Tests
