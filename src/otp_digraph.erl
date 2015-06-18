@@ -65,6 +65,7 @@
         , components/1
         , strong_components/1
         , preorder/1
+        , is_acyclic/1
         ]).
 
 -ifdef(TEST).
@@ -148,6 +149,8 @@ components({_, D}) -> digraph_utils:components(D).
 strong_components({_, D}) -> digraph_utils:strong_components(D).
 
 preorder({_, D}) -> digraph_utils:preorder(D).
+
+is_acyclic({_, D}) -> digraph_utils:is_acyclic(D).
 
 %% -----------------------------------------------------------------------------
 %% Tests

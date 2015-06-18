@@ -66,6 +66,7 @@
         , components/1
         , strong_components/1
         , preorder/1
+        , is_acyclic/1
         ]).
 
 -export([ gen_no_edges/1
@@ -94,6 +95,7 @@
         , gen_components/1
         , gen_strong_components/1
         , gen_preorder/1
+        , gen_is_acyclic/1
         ]).
 
 -ifdef(TEST).
@@ -116,6 +118,7 @@
         , prop_reachable/1
         , prop_components/1
         , prop_preorder/1
+        , prop_is_acyclic/1
         , gen_properties_tests/1
         , gen_properties_tests/2
         , gen_tests/1
@@ -187,6 +190,8 @@
 
 -callback preorder(Graph :: gen_digraph()) -> [vertex()].
 
+-callback is_acyclic(Graph :: gen_digraph()) -> boolean().
+
 %% -----------------------------------------------------------------------------
 %% Callback wrappers
 %% -----------------------------------------------------------------------------
@@ -240,6 +245,8 @@ components(?G) -> M:components(G).
 strong_components(?G) -> M:strong_components(G).
 
 preorder(?G) -> M:preorder(G).
+
+is_acyclic(?G) -> M:is_acyclic(G).
 
 %% -----------------------------------------------------------------------------
 %% Generic implementations
@@ -327,6 +334,10 @@ gen_strong_components(G) ->
 
 gen_preorder(G) ->
     lists:reverse(revpreorder(out(G), vertices(G))).
+
+gen_is_acyclic(G) ->
+    Loop = fun(V) -> has_edge(G, V, V) end,
+    not lists:any(Loop, vertices(G)) andalso not has_long_cycle(G).
 
 -spec get_one_path(Graph :: gen_digraph(), Traget :: vertex(),
                    Stack :: [ToDo :: [vertex()]],
@@ -425,6 +436,15 @@ in(G) ->
 
 inout(G) ->
     fun(X) -> in_neighbours(G, X) ++ out_neighbours(G, X) end.
+
+has_long_cycle(G) ->
+    has_long_cycle(G, revpostorder(G), #{}).
+
+has_long_cycle(_, [], _) -> false;
+has_long_cycle(G, [V|P], Seen) ->
+    SeenF = fun(X) -> seen(X, Seen) end,
+    lists:any(SeenF, out_neighbours(G, V)) orelse
+    has_long_cycle(G, P, add2seen(V, Seen)).
 
 %% -----------------------------------------------------------------------------
 %% Generic properties and generators
@@ -806,6 +826,40 @@ is_preorder(G, Possible, [V|P], Seen, Stack) ->
     end;
 is_preorder(_, _, _, _, _) -> false.
 
+prop_cyclic() ->
+    Module = edgelist_digraph,
+    ?FORALL(
+       L, non_empty(digraph()),
+       ?WITH_G(
+          L,
+          begin
+              Vs = vertices(G),
+              HasCycle = fun(V) ->
+                                 case get_cycle(G, V) of
+                                     [V, V] -> false;
+                                     C      -> C =/= false
+                                 end
+                         end,
+              Cyclic = lists:any(HasCycle, Vs),
+              equals(Cyclic, has_long_cycle(G))
+          end
+         )
+      ).
+
+prop_is_acyclic(Module) ->
+    ?FORALL(
+       L, non_empty(digraph()),
+       ?WITH_G(
+          L,
+          begin
+              Vs = vertices(G),
+              HasCycle = fun(V) -> get_cycle(G, V) =/= false end,
+              Cyclic = lists:any(HasCycle, Vs),
+              equals(not Cyclic, is_acyclic(G))
+          end
+         )
+      ).
+
 gen_properties_tests(Module) ->
     gen_properties_tests(Module, []).
 
@@ -823,6 +877,7 @@ gen_properties_tests(Module, Opts) ->
               , prop_reachable
               , prop_components
               , prop_preorder
+              , prop_is_acyclic
              ],
         Prop <- [?MODULE:X(Module)]
     ].
@@ -850,5 +905,8 @@ is_preorder_test_() ->
     , ?_assert(    is_preorder(R, [2, 0, 1]))
     , ?_assert(    is_preorder(R, [2, 1, 0]))
     ].
+
+has_long_cycle_test() ->
+    ?assert(proper:quickcheck(prop_cyclic())).
 
 -endif. %% TEST
