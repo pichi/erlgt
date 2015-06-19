@@ -66,6 +66,7 @@
         , strong_components/1
         , preorder/1
         , is_acyclic/1
+        , postorder/1
         ]).
 
 -ifdef(TEST).
@@ -137,6 +138,8 @@ strong_components(G) -> gen_digraph:gen_strong_components(G).
 preorder(G) -> gen_digraph:gen_preorder(G).
 
 is_acyclic(G) -> gen_digraph:gen_is_acyclic(G).
+
+postorder(G) -> gen_digraph:gen_postorder(G).
 
 %% -----------------------------------------------------------------------------
 %% Tests

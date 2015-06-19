@@ -67,6 +67,7 @@
         , strong_components/1
         , preorder/1
         , is_acyclic/1
+        , postorder/1
         ]).
 
 -export([ gen_no_edges/1
@@ -96,6 +97,7 @@
         , gen_strong_components/1
         , gen_preorder/1
         , gen_is_acyclic/1
+        , gen_postorder/1
         ]).
 
 -ifdef(TEST).
@@ -119,6 +121,7 @@
         , prop_components/1
         , prop_preorder/1
         , prop_is_acyclic/1
+        , prop_postorder/1
         , gen_properties_tests/1
         , gen_properties_tests/2
         , gen_tests/1
@@ -192,6 +195,8 @@
 
 -callback is_acyclic(Graph :: gen_digraph()) -> boolean().
 
+-callback postorder(Graph :: gen_digraph()) -> [vertex()].
+
 %% -----------------------------------------------------------------------------
 %% Callback wrappers
 %% -----------------------------------------------------------------------------
@@ -247,6 +252,8 @@ strong_components(?G) -> M:strong_components(G).
 preorder(?G) -> M:preorder(G).
 
 is_acyclic(?G) -> M:is_acyclic(G).
+
+postorder(?G) -> M:postorder(G).
 
 %% -----------------------------------------------------------------------------
 %% Generic implementations
@@ -338,6 +345,9 @@ gen_preorder(G) ->
 gen_is_acyclic(G) ->
     Loop = fun(V) -> has_edge(G, V, V) end,
     not lists:any(Loop, vertices(G)) andalso not has_long_cycle(G).
+
+gen_postorder(G) ->
+    lists:reverse(revpostorder(G)).
 
 -spec get_one_path(Graph :: gen_digraph(), Traget :: vertex(),
                    Stack :: [ToDo :: [vertex()]],
@@ -860,6 +870,39 @@ prop_is_acyclic(Module) ->
          )
       ).
 
+prop_postorder(Module) ->
+    ?FORALL(
+       L, non_empty(digraph()),
+       begin
+           R  = edgelist_digraph:from_edgelist(L),
+           Vs = lists:sort(vertices(R)),
+           ?WITH_G(
+              L,
+              begin
+                  P = postorder(G),
+                  ?WHENFAIL(
+                     io:format("~p~n", [P]),
+                  conjunction(
+                    [{vertices, equals(Vs, lists:sort(P))},
+                     {order, is_postorder(R, P)}
+                    ])
+                    )
+              end
+             )
+       end
+      ).
+
+is_postorder(G, P) ->
+    is_postorder(G, lists:reverse(P), #{}).
+
+is_postorder(_, [], _) -> true;
+is_postorder(G, [V|P], Seen) ->
+    SeenAndNoCycle = fun(X) ->
+                             seen(X, Seen) andalso get_path(G, X, V) =:= false
+                     end,
+    not lists:any(SeenAndNoCycle, out_neighbours(G, V)) andalso
+    is_postorder(G, P, add2seen(V, Seen)).
+
 gen_properties_tests(Module) ->
     gen_properties_tests(Module, []).
 
@@ -878,6 +921,7 @@ gen_properties_tests(Module, Opts) ->
               , prop_components
               , prop_preorder
               , prop_is_acyclic
+              , prop_postorder
              ],
         Prop <- [?MODULE:X(Module)]
     ].
@@ -904,6 +948,16 @@ is_preorder_test_() ->
     , ?_assert(    is_preorder(R, [1, 2, 0]))
     , ?_assert(    is_preorder(R, [2, 0, 1]))
     , ?_assert(    is_preorder(R, [2, 1, 0]))
+    ].
+
+is_postorder_test_() ->
+    R = edgelist_digraph:from_edgelist([{0, 1}, {0, 2}]),
+    [ ?_assert(not is_postorder(R, [0, 1, 2]))
+    , ?_assert(not is_postorder(R, [0, 2, 1]))
+    , ?_assert(not is_postorder(R, [1, 0, 2]))
+    , ?_assert(    is_postorder(R, [1, 2, 0]))
+    , ?_assert(not is_postorder(R, [2, 0, 1]))
+    , ?_assert(    is_postorder(R, [2, 1, 0]))
     ].
 
 has_long_cycle_test() ->
