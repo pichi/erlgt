@@ -67,6 +67,7 @@
         , preorder/1
         , is_acyclic/1
         , postorder/1
+        , topsort/1
         ]).
 
 -ifdef(TEST).
@@ -154,6 +155,8 @@ preorder({_, D}) -> digraph_utils:preorder(D).
 is_acyclic({_, D}) -> digraph_utils:is_acyclic(D).
 
 postorder({_, D}) -> digraph_utils:postorder(D).
+
+topsort({_, D}) -> digraph_utils:topsort(D).
 
 %% -----------------------------------------------------------------------------
 %% Tests

@@ -67,6 +67,7 @@
         , preorder/1
         , is_acyclic/1
         , postorder/1
+        , topsort/1
         ]).
 
 -ifdef(TEST).
@@ -140,6 +141,8 @@ preorder(G) -> gen_digraph:gen_preorder(G).
 is_acyclic(G) -> gen_digraph:gen_is_acyclic(G).
 
 postorder(G) -> gen_digraph:gen_postorder(G).
+
+topsort(G) -> gen_digraph:gen_topsort(G).
 
 %% -----------------------------------------------------------------------------
 %% Tests

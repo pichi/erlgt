@@ -68,6 +68,7 @@
         , preorder/1
         , is_acyclic/1
         , postorder/1
+        , topsort/1
         ]).
 
 -export([ gen_no_edges/1
@@ -98,6 +99,7 @@
         , gen_preorder/1
         , gen_is_acyclic/1
         , gen_postorder/1
+        , gen_topsort/1
         ]).
 
 -ifdef(TEST).
@@ -122,6 +124,7 @@
         , prop_preorder/1
         , prop_is_acyclic/1
         , prop_postorder/1
+        , prop_topsort/1
         , gen_properties_tests/1
         , gen_properties_tests/2
         , gen_tests/1
@@ -197,6 +200,8 @@
 
 -callback postorder(Graph :: gen_digraph()) -> [vertex()].
 
+-callback topsort(Graph :: gen_digraph()) -> [vertex()] | false.
+
 %% -----------------------------------------------------------------------------
 %% Callback wrappers
 %% -----------------------------------------------------------------------------
@@ -254,6 +259,8 @@ preorder(?G) -> M:preorder(G).
 is_acyclic(?G) -> M:is_acyclic(G).
 
 postorder(?G) -> M:postorder(G).
+
+topsort(?G) -> M:topsort(G).
 
 %% -----------------------------------------------------------------------------
 %% Generic implementations
@@ -348,6 +355,10 @@ gen_is_acyclic(G) ->
 
 gen_postorder(G) ->
     lists:reverse(revpostorder(G)).
+
+gen_topsort(G) ->
+    L = revpostorder(G),
+    not has_long_cycle(G, L, #{}) andalso L.
 
 -spec get_one_path(Graph :: gen_digraph(), Traget :: vertex(),
                    Stack :: [ToDo :: [vertex()]],
@@ -903,6 +914,43 @@ is_postorder(G, [V|P], Seen) ->
     not lists:any(SeenAndNoCycle, out_neighbours(G, V)) andalso
     is_postorder(G, P, add2seen(V, Seen)).
 
+two_in_order([_,_|_] = L) ->
+    ?LET(
+       {A, B},
+       ?LET(X, integer(1, length(L)-1), lists:split(X, L)),
+       {oneof(A), hd(B)}
+      ).
+
+prop_topsort(Module) ->
+    ?FORALL(
+       L, non_empty(digraph()),
+       begin
+           R  = edgelist_digraph:from_edgelist(L),
+           Vs = lists:sort(vertices(R)),
+           ?WITH_G(
+              L,
+              case topsort(G) of
+                  false ->
+                      HasCycle = fun(V) ->
+                                         case get_cycle(G, V) of
+                                             [V, V] -> false;
+                                             C      -> C =/= false
+                                         end
+                                 end,
+                      lists:any(HasCycle, Vs);
+                  [_] = P -> equals(Vs, P);
+                  P ->
+                      ?FORALL(
+                         {V1, V2}, two_in_order(P),
+                         conjunction(
+                           [{all, equals(Vs, lists:sort(P))},
+                            {order, equals(false, get_path(R, V2, V1))}])
+                        )
+              end
+             )
+       end
+      ).
+
 gen_properties_tests(Module) ->
     gen_properties_tests(Module, []).
 
@@ -922,6 +970,7 @@ gen_properties_tests(Module, Opts) ->
               , prop_preorder
               , prop_is_acyclic
               , prop_postorder
+              , prop_topsort
              ],
         Prop <- [?MODULE:X(Module)]
     ].
