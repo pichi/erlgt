@@ -488,6 +488,12 @@ digraph() -> digraph(edge()).
 
 acyclic_digraph() -> digraph(acyclic_edge()).
 
+twoof([X]) -> {X, X};
+twoof(L) -> twoof(L, L).
+
+twoof(L1, L2) ->
+    ?SUCHTHATMAYBE({X, Y}, {oneof(L1), oneof(L2)}, X =/= Y).
+
 is_simple_path(R, V1, V2, P) ->
     LoP = length(P),
     LoU = length(lists:usort(P)),
@@ -625,7 +631,7 @@ prop_get_path(Module) ->
        begin
            R = edgelist_digraph:from_edgelist(L),
            ?FORALL(
-              {V1, V2}, {oneof(sources(R)), oneof(sinks(R))},
+              {V1, V2}, twoof(sources(R), sinks(R)),
               ?WITH_G(
                  L,
                  begin
@@ -771,7 +777,7 @@ prop_components(Module) ->
                   [{V2, V1} || {V1, V2} <- L] ++ L),
            Vs = lists:sort(vertices(R)),
            ?FORALL(
-              {V1, V2}, {oneof(Vs), oneof(Vs)},
+              {V1, V2}, twoof(Vs),
               ?WITH_G(
                  L,
                  begin
