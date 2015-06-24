@@ -34,14 +34,14 @@
 %% @end
 %%
 %% -----------------------------------------------------------------------------
--module(edgelist_digraph).
+-module(list_digraph).
 
 -behaviour(gen_digraph).
 
--export([new/0, from_list/1]).
+-export([new/0]).
 
--export([ from_edgelist/1
-        , to_edgelist/1
+-export([ from_list/1
+        , to_list/1
         , no_edges/1
         , vertices/1
         , no_vertices/1
@@ -80,17 +80,15 @@
 
 new() -> {?MODULE, []}.
 
-from_list(L) -> from_edgelist(L).
-
 %% -----------------------------------------------------------------------------
 %% Callbacks
 %% -----------------------------------------------------------------------------
 
-from_edgelist(L) ->
+from_list(L) ->
     [ ok || E <- L, case E of {_, _} -> true; _ -> error(badarg) end ],
     {?MODULE, lists:usort(L)}.
 
-to_edgelist({_, L}) -> L.
+to_list({_, L}) -> L.
 
 no_edges(G) -> gen_digraph:gen_no_edges(G).
 

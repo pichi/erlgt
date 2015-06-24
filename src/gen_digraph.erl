@@ -32,7 +32,7 @@
 %% you can use `gen_digraph:vertices(G)' as virtual method dispatcher for
 %% `your_digraph:vertices({your_digraph, _} = G)'.
 %%
-%% Callback `from_edgelist` is required as simplest constructor for testing.
+%% Callback `from_list` is required as simplest constructor for testing.
 %%
 %% @copyright 2015 Hynek Vychodil
 %% @end
@@ -42,7 +42,7 @@
 
 -export_type([gen_digraph/0, vertex/0]).
 
--export([ to_edgelist/1
+-export([ to_list/1
         , no_edges/1
         , vertices/1
         , no_vertices/1
@@ -109,7 +109,7 @@
 
 -export([ digraph/0
         , acyclic_digraph/0
-        , prop_edgelist/1
+        , prop_list/1
         , prop_no_edges/1
         , prop_vertices/1
         , prop_no_vertices/1
@@ -140,9 +140,9 @@
 
 -type vertex() :: term().
 
--callback from_edgelist([{vertex(), vertex()}]) -> gen_digraph().
+-callback from_list([{vertex(), vertex()}]) -> gen_digraph().
 
--callback to_edgelist(Graph :: gen_digraph()) -> [{vertex(), vertex()}].
+-callback to_list(Graph :: gen_digraph()) -> [{vertex(), vertex()}].
 
 -callback no_edges(Graph :: gen_digraph()) -> non_neg_integer().
 
@@ -208,7 +208,7 @@
 
 -define(G, {M, _} = G).
 
-to_edgelist(?G) -> M:to_edgelist(G).
+to_list(?G) -> M:to_list(G).
 
 no_edges(?G) -> M:no_edges(G).
 
@@ -267,7 +267,7 @@ topsort(?G) -> M:topsort(G).
 %% -----------------------------------------------------------------------------
 
 gen_no_edges(G) ->
-    length(to_edgelist(G)).
+    length(to_list(G)).
 
 gen_vertices(G) ->
     % Note sources and sinks can has implementation different form gen_* so
@@ -278,10 +278,10 @@ gen_no_vertices(G) ->
     length(vertices(G)).
 
 gen_in_neighbours(G, V) ->
-    lists:usort([ V1 || {V1, V2} <- to_edgelist(G), V2 =:= V ]).
+    lists:usort([ V1 || {V1, V2} <- to_list(G), V2 =:= V ]).
 
 gen_out_neighbours(G, V) ->
-    lists:usort([ V2 || {V1, V2} <- to_edgelist(G), V1 =:= V ]).
+    lists:usort([ V2 || {V1, V2} <- to_list(G), V1 =:= V ]).
 
 gen_in_degree(G, V) ->
     length(in_neighbours(G, V)).
@@ -290,13 +290,13 @@ gen_out_degree(G, V) ->
     length(out_neighbours(G, V)).
 
 gen_sources(G) ->
-    lists:usort([ V1 || {V1, _} <- to_edgelist(G) ]).
+    lists:usort([ V1 || {V1, _} <- to_list(G) ]).
 
 gen_sinks(G) ->
-    lists:usort([ V2 || {_, V2} <- to_edgelist(G) ]).
+    lists:usort([ V2 || {_, V2} <- to_list(G) ]).
 
 gen_has_edge(G, V1, V2) ->
-    lists:member({V1, V2}, to_edgelist(G)).
+    lists:member({V1, V2}, to_list(G)).
 
 gen_has_path(G, [V|P]) -> gen_has_path(G, V, P).
 
@@ -511,18 +511,18 @@ is_simple_path(R, V1, V2, P) ->
 %% of `Do'.
 -define(WITH_G(L, Do),
         begin
-            G = Module:from_edgelist(L),
+            G = Module:from_list(L),
             try Do after delete(G) end
         end
        ).
 
-prop_edgelist(Module) ->
+prop_list(Module) ->
     ?FORALL(
        L, digraph(),
        ?WITH_G(
           L,
           begin
-              El = lists:sort(to_edgelist(G)),
+              El = lists:sort(to_list(G)),
               Sl = lists:sort(L),
               Ul = lists:usort(Sl),
               ?WHENFAIL(
@@ -537,7 +537,7 @@ prop_edgelist(Module) ->
 prop_no_edges(Module) ->
     ?FORALL(
        L, digraph(),
-       ?WITH_G(L, equals(length(to_edgelist(G)), no_edges(G)))
+       ?WITH_G(L, equals(length(to_list(G)), no_edges(G)))
       ).
 
 prop_vertices(Module) ->
@@ -611,7 +611,7 @@ prop_has_path(Module) ->
     ?FORALL(
        L, non_empty(digraph()),
        begin
-           R = edgelist_digraph:from_edgelist(L),
+           R = list_digraph:from_list(L),
            ?FORALL(
               P, non_empty(list(oneof(vertices(R)))),
               ?WITH_G(
@@ -629,7 +629,7 @@ prop_get_path(Module) ->
     ?FORALL(
        L, non_empty(digraph()),
        begin
-           R = edgelist_digraph:from_edgelist(L),
+           R = list_digraph:from_list(L),
            ?FORALL(
               {V1, V2}, twoof(sources(R), sinks(R)),
               ?WITH_G(
@@ -676,7 +676,7 @@ prop_get_cycle(Module) ->
     ?FORALL(
        L, non_empty(digraph()),
        begin
-           R = edgelist_digraph:from_edgelist(L),
+           R = list_digraph:from_list(L),
            ?FORALL(
               V, oneof(vertices(R)),
               ?WITH_G(
@@ -723,7 +723,7 @@ prop_reachable(Module) ->
     ?FORALL(
        L, non_empty(digraph()),
        begin
-           R = edgelist_digraph:from_edgelist(L),
+           R = list_digraph:from_list(L),
            Vs = vertices(R),
            ?FORALL(
               {Ss, V}, {list(oneof(Vs)), oneof(Vs)},
@@ -772,8 +772,8 @@ prop_components(Module) ->
     ?FORALL(
        L, non_empty(digraph()),
        begin
-           R  = edgelist_digraph:from_edgelist(L),
-           UR = edgelist_digraph:from_edgelist(
+           R  = list_digraph:from_list(L),
+           UR = list_digraph:from_list(
                   [{V2, V1} || {V1, V2} <- L] ++ L),
            Vs = lists:sort(vertices(R)),
            ?FORALL(
@@ -822,7 +822,7 @@ prop_preorder(Module) ->
     ?FORALL(
        L, non_empty(digraph()),
        begin
-           R  = edgelist_digraph:from_edgelist(L),
+           R  = list_digraph:from_list(L),
            Vs = lists:sort(vertices(R)),
            ?WITH_G(
               L,
@@ -854,7 +854,7 @@ is_preorder(G, Possible, [V|P], Seen, Stack) ->
 is_preorder(_, _, _, _, _) -> false.
 
 prop_cyclic() ->
-    Module = edgelist_digraph,
+    Module = list_digraph,
     ?FORALL(
        L, non_empty(digraph()),
        ?WITH_G(
@@ -891,7 +891,7 @@ prop_postorder(Module) ->
     ?FORALL(
        L, non_empty(digraph()),
        begin
-           R  = edgelist_digraph:from_edgelist(L),
+           R  = list_digraph:from_list(L),
            Vs = lists:sort(vertices(R)),
            ?WITH_G(
               L,
@@ -931,7 +931,7 @@ prop_topsort(Module) ->
     ?FORALL(
        L, non_empty(digraph()),
        begin
-           R  = edgelist_digraph:from_edgelist(L),
+           R  = list_digraph:from_list(L),
            Vs = lists:sort(vertices(R)),
            ?WITH_G(
               L,
@@ -962,7 +962,7 @@ gen_properties_tests(Module) ->
 
 gen_properties_tests(Module, Opts) ->
     [{atom_to_list(X), ?_assert(proper:quickcheck(Prop, Opts))}
-     || X <- [  prop_edgelist
+     || X <- [  prop_list
               , prop_no_edges
               , prop_vertices
               , prop_no_vertices
@@ -988,15 +988,15 @@ gen_tests(Module) ->
     ].
 
 gen_has_path_test() ->
-    R = edgelist_digraph:from_edgelist([{0, 0}, {0, 1}]),
+    R = list_digraph:from_list([{0, 0}, {0, 1}]),
     ?assertEqual(true, gen_has_path(R, [0, 1])).
 
 gen_get_path_simple_path_test() ->
-    R = edgelist_digraph:from_edgelist([{0, 0}, {0, 1}]),
+    R = list_digraph:from_list([{0, 0}, {0, 1}]),
     ?assertEqual([0,1], gen_get_path(R, 0, 1)).
 
 is_preorder_test_() ->
-    R = edgelist_digraph:from_edgelist([{0, 1}, {1, 2}]),
+    R = list_digraph:from_list([{0, 1}, {1, 2}]),
     [ ?_assert(    is_preorder(R, [0, 1, 2]))
     , ?_assert(not is_preorder(R, [0, 2, 1]))
     , ?_assert(not is_preorder(R, [1, 0, 2]))
@@ -1006,7 +1006,7 @@ is_preorder_test_() ->
     ].
 
 is_postorder_test_() ->
-    R = edgelist_digraph:from_edgelist([{0, 1}, {0, 2}]),
+    R = list_digraph:from_list([{0, 1}, {0, 2}]),
     [ ?_assert(not is_postorder(R, [0, 1, 2]))
     , ?_assert(not is_postorder(R, [0, 2, 1]))
     , ?_assert(not is_postorder(R, [1, 0, 2]))

@@ -40,8 +40,8 @@
 
 -export([new/0]).
 
--export([ from_edgelist/1
-        , to_edgelist/1
+-export([ from_list/1
+        , to_list/1
         , no_edges/1
         , vertices/1
         , no_vertices/1
@@ -84,7 +84,7 @@ new() -> {?MODULE, digraph:new([private])}.
 %% Callbacks
 %% -----------------------------------------------------------------------------
 
-from_edgelist(L) ->
+from_list(L) ->
     {_, D} = G = new(),
     [ case E of
           {V1, V2} ->
@@ -96,7 +96,7 @@ from_edgelist(L) ->
       || E <- L ],
     G.
 
-to_edgelist({_, D}) ->
+to_list({_, D}) ->
     [ case digraph:edge(D, E) of
           {_, V1, V2, _} -> {V1, V2}
       end
