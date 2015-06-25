@@ -53,8 +53,8 @@
         , sources/1
         , sinks/1
         , delete/1
-        , has_edge/3
-        , has_path/2
+        , is_edge/3
+        , is_path/2
         , get_path/3
         , get_cycle/2
         , get_short_path/3
@@ -126,9 +126,9 @@ sinks(G) -> gen_digraph:gen_sinks(G).
 
 delete({_, D}) -> digraph:delete(D).
 
-has_edge(G, V1, V2) -> lists:member(V2, out_neighbours(G, V1)).
+is_edge(G, V1, V2) -> lists:member(V2, out_neighbours(G, V1)).
 
-has_path(G, P) -> gen_digraph:gen_has_path(G, P).
+is_path(G, P) -> gen_digraph:gen_is_path(G, P).
 
 get_path({_, D}, V1, V2) -> digraph:get_path(D, V1, V2).
 

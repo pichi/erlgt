@@ -54,8 +54,8 @@
         , sources/1
         , sinks/1
         , delete/1
-        , has_edge/3
-        , has_path/2
+        , is_edge/3
+        , is_path/2
         , get_path/3
         , get_cycle/2
         , get_short_path/3
@@ -81,8 +81,8 @@
         , gen_out_degree/2
         , gen_sources/1
         , gen_sinks/1
-        , gen_has_edge/3
-        , gen_has_path/2
+        , gen_is_edge/3
+        , gen_is_path/2
         , gen_get_path/3
         , gen_get_path_lists/3
         , gen_get_path_maps/3
@@ -116,8 +116,8 @@
         , prop_no_vertices/1
         , test_empty_vertices/1
         , prop_neighbours/1
-        , prop_has_edge/1
-        , prop_has_path/1
+        , prop_is_edge/1
+        , prop_is_path/1
         , prop_get_path/1
         , prop_get_cycle/1
         , prop_reachable/1
@@ -175,10 +175,10 @@
 
 -callback delete(Graph :: gen_digraph()) -> true.
 
--callback has_edge(Graph :: gen_digraph(), V1 :: vertex(), V2 :: vertex()) ->
+-callback is_edge(Graph :: gen_digraph(), V1 :: vertex(), V2 :: vertex()) ->
     boolean().
 
--callback has_path(Graph :: gen_digraph(), vertices()) -> boolean().
+-callback is_path(Graph :: gen_digraph(), vertices()) -> boolean().
 
 -callback get_path(Graph :: gen_digraph(), V1 :: vertex(), V2 :: vertex()) ->
     path() | false.
@@ -243,9 +243,9 @@ sinks(?G) -> M:sinks(G).
 
 delete(?G) -> M:delete(G).
 
-has_edge(?G, V1, V2) -> M:has_edge(G, V1, V2).
+is_edge(?G, V1, V2) -> M:is_edge(G, V1, V2).
 
-has_path(?G, P) -> M:has_path(G, P).
+is_path(?G, P) -> M:is_path(G, P).
 
 get_path(?G, V1, V2) -> M:get_path(G, V1, V2).
 
@@ -306,14 +306,14 @@ gen_sources(G) ->
 gen_sinks(G) ->
     lists:usort([ V2 || {_, V2} <- edges(G) ]).
 
-gen_has_edge(G, V1, V2) ->
+gen_is_edge(G, V1, V2) ->
     lists:member({V1, V2}, edges(G)).
 
-gen_has_path(G, [V|P]) -> gen_has_path(G, V, P).
+gen_is_path(G, [V|P]) -> gen_is_path(G, V, P).
 
-gen_has_path(_, _, []) -> true;
-gen_has_path(G, V1, [V2|P]) ->
-    has_edge(G, V1, V2) andalso gen_has_path(G, V2, P).
+gen_is_path(_, _, []) -> true;
+gen_is_path(G, V1, [V2|P]) ->
+    is_edge(G, V1, V2) andalso gen_is_path(G, V2, P).
 
 gen_get_path(G, V1, V2) ->
     gen_get_path_maps(G, V1, V2).
@@ -361,7 +361,7 @@ gen_preorder(G) ->
     lists:reverse(revpreorder(out(G), vertices(G))).
 
 gen_is_acyclic(G) ->
-    Loop = fun(V) -> has_edge(G, V, V) end,
+    Loop = fun(V) -> is_edge(G, V, V) end,
     not lists:any(Loop, vertices(G)) andalso not has_long_cycle(G).
 
 gen_postorder(G) ->
@@ -521,7 +521,7 @@ is_simple_path(R, V1, V2, P) ->
         {V1, V2} ->
             LoP =:= LoU;
         _ -> false
-    end andalso has_path(R, P).
+    end andalso is_path(R, P).
 
 %% Warning! This macro can be used only as the innermost macro of a property
 %% because it deletes graph `G'. In other words, If action `Do' returns
@@ -615,19 +615,19 @@ prop_neighbours(Module) ->
          )
       ).
 
-prop_has_edge(Module) ->
+prop_is_edge(Module) ->
     ?FORALL(
        {{V1, V2} = E, L}, {edge(), digraph()},
        ?WITH_G(
           L,
           begin
               Expect = lists:member(E, L),
-              collect(Expect, equals(Expect, has_edge(G, V1, V2)))
+              collect(Expect, equals(Expect, is_edge(G, V1, V2)))
           end
          )
       ).
 
-prop_has_path(Module) ->
+prop_is_path(Module) ->
     ?FORALL(
        L, non_empty(digraph()),
        begin
@@ -637,8 +637,9 @@ prop_has_path(Module) ->
               ?WITH_G(
                  L,
                  begin
-                     Expect = gen_has_path(R, P),
-                     collect(Expect andalso {length(P), length(L)}, equals(Expect, has_path(G, P)))
+                     Expect = gen_is_path(R, P),
+                     collect(Expect andalso {length(P), length(L)},
+                             equals(Expect, is_path(G, P)))
                  end
                 )
              )
@@ -987,8 +988,8 @@ gen_properties_tests(Module, Opts) ->
               , prop_vertices
               , prop_no_vertices
               , prop_neighbours
-              , prop_has_edge
-              , prop_has_path
+              , prop_is_edge
+              , prop_is_path
               , prop_get_path
               , prop_get_cycle
               , prop_reachable
@@ -1007,9 +1008,9 @@ gen_tests(Module) ->
         Test <- [?MODULE:X(Module)]
     ].
 
-gen_has_path_test() ->
+gen_is_path_test() ->
     R = list_digraph:from_list([{0, 0}, {0, 1}]),
-    ?assertEqual(true, gen_has_path(R, [0, 1])).
+    ?assertEqual(true, gen_is_path(R, [0, 1])).
 
 gen_get_path_simple_path_test() ->
     R = list_digraph:from_list([{0, 0}, {0, 1}]),
