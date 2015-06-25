@@ -43,6 +43,7 @@
 -export_type([gen_digraph/0, vertex/0]).
 
 -export([ to_list/1
+        , edges/1
         , no_edges/1
         , vertices/1
         , no_vertices/1
@@ -71,8 +72,8 @@
         , topsort/1
         ]).
 
--export([ gen_no_edges/1
-        , gen_vertices/1
+-export([ gen_to_list/1
+        , gen_no_edges/1
         , gen_no_vertices/1
         , gen_in_neighbours/2
         , gen_out_neighbours/2
@@ -140,67 +141,77 @@
 
 -type vertex() :: term().
 
--callback from_list([{vertex(), vertex()}]) -> gen_digraph().
+-type edge() :: {vertex(), vertex()}.
 
--callback to_list(Graph :: gen_digraph()) -> [{vertex(), vertex()}].
+-type digraph_list() :: [{vertex()} | edge()].
+
+-type vertices() :: [vertex()].
+
+-type path() :: vertices().
+
+-callback from_list(digraph_list()) -> gen_digraph().
+
+-callback to_list(Graph :: gen_digraph()) -> digraph_list().
+
+-callback edges(Graph :: gen_digraph()) -> [edge()].
 
 -callback no_edges(Graph :: gen_digraph()) -> non_neg_integer().
 
--callback vertices(Graph :: gen_digraph()) -> [vertex()].
+-callback vertices(Graph :: gen_digraph()) -> vertices().
 
 -callback no_vertices(Graph :: gen_digraph()) -> non_neg_integer().
 
--callback in_neighbours(Graph :: gen_digraph(), V :: vertex()) -> [vertex()].
+-callback in_neighbours(Graph :: gen_digraph(), V :: vertex()) -> vertices().
 
--callback out_neighbours(Graph :: gen_digraph(), V :: vertex()) -> [vertex()].
+-callback out_neighbours(Graph :: gen_digraph(), V :: vertex()) -> vertices().
 
 -callback in_degree(Graph :: gen_digraph(), V :: vertex()) -> non_neg_integer().
 
 -callback out_degree(Graph :: gen_digraph(), V :: vertex()) -> non_neg_integer().
 
--callback sources(Graph :: gen_digraph()) -> [vertex()].
+-callback sources(Graph :: gen_digraph()) -> vertices().
 
--callback sinks(Graph :: gen_digraph()) -> [vertex()].
+-callback sinks(Graph :: gen_digraph()) -> vertices().
 
 -callback delete(Graph :: gen_digraph()) -> true.
 
 -callback has_edge(Graph :: gen_digraph(), V1 :: vertex(), V2 :: vertex()) ->
     boolean().
 
--callback has_path(Graph :: gen_digraph(), [V1 :: vertex()]) -> boolean().
+-callback has_path(Graph :: gen_digraph(), vertices()) -> boolean().
 
 -callback get_path(Graph :: gen_digraph(), V1 :: vertex(), V2 :: vertex()) ->
-    [vertex()] | false.
+    path() | false.
 
--callback get_cycle(Graph :: gen_digraph(), V :: vertex()) -> [vertex()] | false.
+-callback get_cycle(Graph :: gen_digraph(), V :: vertex()) -> path() | false.
 
 -callback get_short_path(Graph :: gen_digraph(), V1 :: vertex(), V2 :: vertex()) ->
-    [vertex()] | false.
+    path() | false.
 
 -callback get_short_cycle(Graph :: gen_digraph(), V :: vertex()) ->
-    [vertex()] | false.
+    path() | false.
 
--callback reachable(Graph :: gen_digraph(), Vs :: [vertex()]) -> [vertex()].
+-callback reachable(Graph :: gen_digraph(), Vs :: vertices()) -> vertices().
 
--callback reachable_neighbours(Graph :: gen_digraph(), Vs :: [vertex()]) ->
-    [vertex()].
+-callback reachable_neighbours(Graph :: gen_digraph(), Vs :: vertices()) ->
+    vertices().
 
--callback reaching(Graph :: gen_digraph(), Vs :: [vertex()]) -> [vertex()].
+-callback reaching(Graph :: gen_digraph(), Vs :: vertices()) -> vertices().
 
--callback reaching_neighbours(Graph :: gen_digraph(), Vs :: [vertex()]) ->
-    [vertex()].
+-callback reaching_neighbours(Graph :: gen_digraph(), Vs :: vertices()) ->
+    vertices().
 
--callback components(Graph :: gen_digraph()) -> [[vertex()]].
+-callback components(Graph :: gen_digraph()) -> [vertices()].
 
--callback strong_components(Graph :: gen_digraph()) -> [[vertex()]].
+-callback strong_components(Graph :: gen_digraph()) -> [vertices()].
 
--callback preorder(Graph :: gen_digraph()) -> [vertex()].
+-callback preorder(Graph :: gen_digraph()) -> vertices().
 
 -callback is_acyclic(Graph :: gen_digraph()) -> boolean().
 
--callback postorder(Graph :: gen_digraph()) -> [vertex()].
+-callback postorder(Graph :: gen_digraph()) -> vertices().
 
--callback topsort(Graph :: gen_digraph()) -> [vertex()] | false.
+-callback topsort(Graph :: gen_digraph()) -> vertices() | false.
 
 %% -----------------------------------------------------------------------------
 %% Callback wrappers
@@ -209,6 +220,8 @@
 -define(G, {M, _} = G).
 
 to_list(?G) -> M:to_list(G).
+
+edges(?G) -> M:edges(G).
 
 no_edges(?G) -> M:no_edges(G).
 
@@ -266,22 +279,20 @@ topsort(?G) -> M:topsort(G).
 %% Generic implementations
 %% -----------------------------------------------------------------------------
 
-gen_no_edges(G) ->
-    length(to_list(G)).
+gen_to_list(G) ->
+    [{V} || V <- vertices(G)] ++ edges(G).
 
-gen_vertices(G) ->
-    % Note sources and sinks can has implementation different form gen_* so
-    % it can return vertices in any particular order.
-    lists:umerge([ lists:usort(Vs) || Vs <- [sources(G), sinks(G)] ]).
+gen_no_edges(G) ->
+    length(edges(G)).
 
 gen_no_vertices(G) ->
     length(vertices(G)).
 
 gen_in_neighbours(G, V) ->
-    lists:usort([ V1 || {V1, V2} <- to_list(G), V2 =:= V ]).
+    lists:usort([ V1 || {V1, V2} <- edges(G), V2 =:= V ]).
 
 gen_out_neighbours(G, V) ->
-    lists:usort([ V2 || {V1, V2} <- to_list(G), V1 =:= V ]).
+    lists:usort([ V2 || {V1, V2} <- edges(G), V1 =:= V ]).
 
 gen_in_degree(G, V) ->
     length(in_neighbours(G, V)).
@@ -290,13 +301,13 @@ gen_out_degree(G, V) ->
     length(out_neighbours(G, V)).
 
 gen_sources(G) ->
-    lists:usort([ V1 || {V1, _} <- to_list(G) ]).
+    lists:usort([ V1 || {V1, _} <- edges(G) ]).
 
 gen_sinks(G) ->
-    lists:usort([ V2 || {_, V2} <- to_list(G) ]).
+    lists:usort([ V2 || {_, V2} <- edges(G) ]).
 
 gen_has_edge(G, V1, V2) ->
-    lists:member({V1, V2}, to_list(G)).
+    lists:member({V1, V2}, edges(G)).
 
 gen_has_path(G, [V|P]) -> gen_has_path(G, V, P).
 
@@ -475,14 +486,21 @@ has_long_cycle(G, [V|P], Seen) ->
 
 edge() ->
     ?SIZED(S, begin
-                  V = round(math:sqrt(S)),
+                  V = round(math:sqrt(2*S)),
                   {integer(0, V-1), integer(0, V)}
+              end
+          ).
+
+vertex() ->
+    ?SIZED(S, begin
+                  V = round(math:sqrt(2*S)),
+                  integer(0, V)
               end
           ).
 
 acyclic_edge() -> ?LET({A, B}, edge(), {B, A+B+1}).
 
-digraph(Edge) -> list(Edge).
+digraph(Edge) -> list(oneof([{vertex()}, Edge])).
 
 digraph() -> digraph(edge()).
 
@@ -519,40 +537,42 @@ is_simple_path(R, V1, V2, P) ->
 prop_list(Module) ->
     ?FORALL(
        L, digraph(),
-       ?WITH_G(
-          L,
-          begin
-              El = lists:sort(to_list(G)),
-              Sl = lists:sort(L),
-              Ul = lists:usort(Sl),
-              ?WHENFAIL(
-                 io:format("~p and ~p =/= ~p~n",
-                           [Sl, Ul, El]),
-                 Sl =:= El orelse Ul =:= El
-                )
-          end
-         )
+       begin
+           R  = list_digraph:from_list(L),
+           RL = lists:sort(to_list(R)),
+           ?WITH_G(
+              L,
+              begin
+                  GL = lists:sort(to_list(G)),
+                  equals(RL, GL)
+              end
+             )
+       end
       ).
 
 prop_no_edges(Module) ->
     ?FORALL(
        L, digraph(),
-       ?WITH_G(L, equals(length(to_list(G)), no_edges(G)))
+       ?WITH_G(L, equals(length(edges(G)), no_edges(G)))
       ).
 
 prop_vertices(Module) ->
     ?FORALL(
        L, non_empty(digraph()),
        ?FORALL(
-          {V1, V2}, oneof(L),
+          E, oneof(L),
           ?WITH_G(L,
-                  conjunction(
-                    [{source,     lists:member(V1, vertices(G))},
-                     {sink,       lists:member(V2, vertices(G))},
-                     {in_sources, lists:member(V1, sources(G))},
-                     {in_sinks,   lists:member(V2, sinks(G))}
-                    ]
-                   )
+                  case E of
+                      {V} -> lists:member(V, vertices(G));
+                      {V1, V2} ->
+                          conjunction(
+                            [{source,     lists:member(V1, vertices(G))},
+                             {sink,       lists:member(V2, vertices(G))},
+                             {in_sources, lists:member(V1, sources(G))},
+                             {in_sinks,   lists:member(V2, sinks(G))}
+                            ]
+                           )
+                  end
                  )
          )
       ).
@@ -577,7 +597,7 @@ test_empty_vertices(Module) ->
 
 prop_neighbours(Module) ->
     ?FORALL(
-       L, non_empty(digraph()),
+       L, non_empty(list(edge())),
        ?FORALL(
           {V1, V2}, oneof(L),
           ?WITH_G(
@@ -627,7 +647,7 @@ prop_has_path(Module) ->
 
 prop_get_path(Module) ->
     ?FORALL(
-       L, non_empty(digraph()),
+       L, non_empty(list(edge())),
        begin
            R = list_digraph:from_list(L),
            ?FORALL(
@@ -734,8 +754,8 @@ prop_reachable(Module) ->
                                  fun(X) -> get_path(G, X, V) =/= false end,
                                  Ss),
                      HasRevPath = lists:any(
-                                 fun(X) -> get_path(G, V, X) =/= false end,
-                                 Ss),
+                                    fun(X) -> get_path(G, V, X) =/= false end,
+                                    Ss),
                      collect(
                        HasPath,
                        conjunction(

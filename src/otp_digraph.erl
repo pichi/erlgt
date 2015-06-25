@@ -42,6 +42,7 @@
 
 -export([ from_list/1
         , to_list/1
+        , edges/1
         , no_edges/1
         , vertices/1
         , no_vertices/1
@@ -87,6 +88,7 @@ new() -> {?MODULE, digraph:new([private])}.
 from_list(L) ->
     {_, D} = G = new(),
     [ case E of
+          {V} -> digraph:add_vertex(D, V);
           {V1, V2} ->
               digraph:add_vertex(D, V1),
               digraph:add_vertex(D, V2),
@@ -96,7 +98,9 @@ from_list(L) ->
       || E <- L ],
     G.
 
-to_list({_, D}) ->
+to_list(G) -> gen_digraph:gen_to_list(G).
+
+edges({_, D}) ->
     [ case digraph:edge(D, E) of
           {_, V1, V2, _} -> {V1, V2}
       end

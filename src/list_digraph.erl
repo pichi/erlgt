@@ -42,6 +42,7 @@
 
 -export([ from_list/1
         , to_list/1
+        , edges/1
         , no_edges/1
         , vertices/1
         , no_vertices/1
@@ -78,21 +79,28 @@
 %% API
 %% -----------------------------------------------------------------------------
 
-new() -> {?MODULE, []}.
+new() -> {?MODULE, {[], []}}.
 
 %% -----------------------------------------------------------------------------
 %% Callbacks
 %% -----------------------------------------------------------------------------
 
 from_list(L) ->
-    [ ok || E <- L, case E of {_, _} -> true; _ -> error(badarg) end ],
-    {?MODULE, lists:usort(L)}.
+    Vs = [ V || E <- L, V <- case E of
+                                 {V} -> [V];
+                                 {V1, V2} -> [V1, V2];
+                                 _ -> error(badarg)
+                             end ],
+    Es = [ E || {_, _} = E <- L ],
+    {?MODULE, {lists:usort(Vs), lists:sort(Es)}}.
 
-to_list({_, L}) -> L.
+to_list(G) -> gen_digraph:gen_to_list(G).
+
+edges({_, {_, Es}}) -> Es.
 
 no_edges(G) -> gen_digraph:gen_no_edges(G).
 
-vertices(G) -> gen_digraph:gen_vertices(G).
+vertices({_, {Vs, _}}) -> Vs.
 
 no_vertices(G) -> gen_digraph:gen_no_vertices(G).
 
