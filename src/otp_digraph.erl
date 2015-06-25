@@ -59,6 +59,8 @@
         , get_cycle/2
         , get_short_path/3
         , get_short_cycle/2
+        , has_path/3
+        , has_cycle/2
         , reachable/2
         , reachable_neighbours/2
         , reaching/2
@@ -142,6 +144,10 @@ get_cycle({_, D}, V) ->
 get_short_path({_, D}, V1, V2) -> digraph:get_short_path(D, V1, V2).
 
 get_short_cycle({_, D}, V) -> digraph:get_short_cycle(D, V).
+
+has_path(G, V1, V2) -> gen_digraph:gen_has_path(G, V1, V2).
+
+has_cycle(G, V) -> gen_digraph:gen_has_cycle(G, V).
 
 reachable({_, D}, Vs) -> digraph_utils:reachable(Vs, D).
 

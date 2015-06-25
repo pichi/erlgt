@@ -60,6 +60,8 @@
         , get_cycle/2
         , get_short_path/3
         , get_short_cycle/2
+        , has_path/3
+        , has_cycle/2
         , reachable/2
         , reachable_neighbours/2
         , reaching/2
@@ -92,6 +94,8 @@
         , gen_get_short_path_maps/3
         , gen_get_short_path_lists/3
         , gen_get_short_cycle/2
+        , gen_has_path/3
+        , gen_has_cycle/2
         , gen_reachable/2
         , gen_reachable_neighbours/2
         , gen_reaching/2
@@ -194,6 +198,11 @@
 -callback get_short_cycle(Graph :: gen_digraph(), V :: vertex()) ->
     path() | false.
 
+-callback has_path(Graph :: gen_digraph(), V1 :: vertex(), V2 :: vertex()) ->
+    boolean().
+
+-callback has_cycle(Graph :: gen_digraph(), V :: vertex()) -> boolean().
+
 -callback reachable(Graph :: gen_digraph(), Vs :: vertices()) -> vertices().
 
 -callback reachable_neighbours(Graph :: gen_digraph(), Vs :: vertices()) ->
@@ -259,6 +268,10 @@ get_cycle(?G, V) -> M:get_cycle(G, V).
 get_short_path(?G, V1, V2) -> M:get_short_path(G, V1, V2).
 
 get_short_cycle(?G, V) -> M:get_short_cycle(G, V).
+
+has_path(?G, V1, V2) -> M:has_path(G, V1, V2).
+
+has_cycle(?G, V) -> M:has_cycle(G, V).
 
 reachable(?G, V) -> M:reachable(G, V).
 
@@ -343,6 +356,10 @@ gen_get_short_path_lists(G, V1, V2) ->
     get_one_short_path(G, V2, [[V1]], [], []).
 
 gen_get_short_cycle(G, V) -> get_short_path(G, V, V).
+
+gen_has_path(G, V1, V2) -> gen_get_path(G, V1, V2) =/= false.
+
+gen_has_cycle(G, V) -> gen_get_cycle(G, V) =/= false.
 
 gen_reachable(G, Vs) ->
     revpreorder(out(G), Vs).
@@ -775,10 +792,10 @@ prop_reachable(Module) ->
                  L,
                  begin
                      HasPath = lists:any(
-                                 fun(X) -> get_path(G, X, V) =/= false end,
+                                 fun(X) -> has_path(G, X, V) end,
                                  Ss),
                      HasRevPath = lists:any(
-                                    fun(X) -> get_path(G, V, X) =/= false end,
+                                    fun(X) -> has_path(G, V, X) end,
                                     Ss),
                      collect(
                        HasPath,
@@ -845,15 +862,15 @@ prop_components(Module) ->
                            V1 =:= V2 orelse
                            equals(
                              lists:member(V2, C),
-                             get_path(UR, V1, V2) =/= false)},
+                             has_path(UR, V1, V2))},
                           {strong_components_vertices,
                            Vs =:= lists:sort(lists:append(SCs))},
                           {strong_components_path,
                            V1 =:= V2 orelse
                            equals(
                              lists:member(V2, SC),
-                             get_path(R, V1, V2) =/= false andalso
-                             get_path(R, V2, V1) =/= false)}
+                             has_path(R, V1, V2) andalso
+                             has_path(R, V2, V1))}
                          ])
                       )
                  end
@@ -959,7 +976,7 @@ is_postorder(G, P) ->
 is_postorder(_, [], _) -> true;
 is_postorder(G, [V|P], Seen) ->
     SeenAndNoCycle = fun(X) ->
-                             seen(X, Seen) andalso get_path(G, X, V) =:= false
+                             seen(X, Seen) andalso not has_path(G, X, V)
                      end,
     not lists:any(SeenAndNoCycle, out_neighbours(G, V)) andalso
     is_postorder(G, P, add2seen(V, Seen)).
@@ -1020,11 +1037,11 @@ prop_condensation(Module) ->
                          true  ->
                              collect(same,
                                      V1 =:= V2 orelse
-                                     get_path(G, V1, V2) =/= false andalso
-                                     get_path(G, V2, V1) =/= false);
+                                     has_path(G, V1, V2) andalso
+                                     has_path(G, V2, V1));
                          false ->
-                             ExpectPath = get_path(G, V1, V2) =/= false,
-                             HasPath    = get_path(Condensation, C1, C2) =/= false,
+                             ExpectPath = has_path(G, V1, V2),
+                             HasPath    = has_path(Condensation, C1, C2),
                              collect(ExpectPath, equals(ExpectPath, HasPath))
                      end,
                      delete(Condensation),
