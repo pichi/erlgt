@@ -69,6 +69,7 @@
         , is_acyclic/1
         , postorder/1
         , topsort/1
+        , condensation/1
         ]).
 
 -ifdef(TEST).
@@ -161,6 +162,8 @@ is_acyclic({_, D}) -> digraph_utils:is_acyclic(D).
 postorder({_, D}) -> digraph_utils:postorder(D).
 
 topsort({_, D}) -> digraph_utils:topsort(D).
+
+condensation({Mod, D}) -> {Mod, digraph_utils:condensation(D)}.
 
 %% -----------------------------------------------------------------------------
 %% Tests
